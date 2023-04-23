@@ -11,12 +11,16 @@
 
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/quaternion_geometric.hpp"
 #include "glm/fwd.hpp"
+#include "glog/logging.h"
 #include "imgui_impl_glfw.h"
 #include "shaders/deferred.frag.hpp"
 #include "shaders/deferred.vert.hpp"
 #include "shaders/gbuffer.frag.hpp"
 #include "shaders/gbuffer.vert.hpp"
+#include "shaders/shadowmap.frag.hpp"
+#include "shaders/shadowmap.vert.hpp"
 #include "shaders/skybox.frag.hpp"
 #include "shaders/skybox.vert.hpp"
 
@@ -24,6 +28,8 @@
 #include "glm/ext.hpp"
 using namespace loo;
 using namespace std;
+
+static constexpr int SHADOWMAP_RESOLUION[2]{1024, 1024};
 
 static void mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {
     ImGui_ImplGlfw_CursorPosCallback(window, xposIn, yposIn);
@@ -94,23 +100,16 @@ HDSSSApplication::HDSSSApplication(int width, int height,
       m_mvpbuffer(0, sizeof(MVP)),
       m_lightsbuffer(SHADER_BINDING_LIGHTS,
                      sizeof(ShaderLight) * SHADER_LIGHTS_MAX + sizeof(GLint)),
+      m_shadowmapshader{Shader(SHADOWMAP_VERT, ShaderType::Vertex),
+                        Shader(SHADOWMAP_FRAG, ShaderType::Fragment)},
       m_deferredshader{Shader(DEFERRED_VERT, ShaderType::Vertex),
                        Shader(DEFERRED_FRAG, ShaderType::Fragment)},
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad),
       m_hdsss(getWidth(), getHeight()) {
-    ifstream ifs("camera.txt");
+    ifstream ifs("camera.bin", ios::binary);
     if (!ifs.fail()) {
-        glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-        float yaw = -90.0f;
-        float pitch = 0.0f;
-        float aspect = 4.f / 3.f;
-
-        ifs >> position.x >> position.y >> position.z;
-        // ifs >> up.x >> up.y >> up.z;
-        ifs >> yaw >> pitch >> aspect;
-        m_maincam = Camera(position, up, yaw, pitch, aspect);
+        ifs.read(reinterpret_cast<char*>(&m_maincam), sizeof(m_maincam));
     }
     ifs.close();
     if (skyBoxPrefix) {
@@ -135,6 +134,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     }
 
     initGBuffers();
+    initShadowMap();
     initDeferredPass();
 
     // final pass related
@@ -161,7 +161,7 @@ void HDSSSApplication::initGBuffers() {
 
     m_gbuffers.sssMask = make_shared<Texture2D>();
     m_gbuffers.sssMask->init();
-    m_gbuffers.sssMask->setupStorage(getWidth(), getHeight(), GL_R8UI, 1);
+    m_gbuffers.sssMask->setupStorage(getWidth(), getHeight(), GL_R8, 1);
     m_gbuffers.sssMask->setSizeFilter(GL_NEAREST, GL_NEAREST);
     panicPossibleGLError();
 
@@ -172,6 +172,22 @@ void HDSSSApplication::initGBuffers() {
     m_gbufferfb.attachTexture(*m_gbuffers.albedo, GL_COLOR_ATTACHMENT2, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.sssMask, GL_COLOR_ATTACHMENT3, 0);
     m_gbufferfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
+}
+
+void HDSSSApplication::initShadowMap() {
+    m_mainlightshadowmapfb.init();
+    m_mainlightshadowmap = make_shared<Texture2D>();
+    m_mainlightshadowmap->init();
+    m_mainlightshadowmap->setupStorage(SHADOWMAP_RESOLUION[0],
+                                       SHADOWMAP_RESOLUION[1],
+                                       GL_DEPTH_COMPONENT32, 1);
+    m_mainlightshadowmap->setSizeFilter(GL_NEAREST, GL_NEAREST);
+    // m_mainlightshadowmap->setWrapFilter(GL_CLAMP_TO_EDGE);
+    m_mainlightshadowmapfb.attachTexture(*m_mainlightshadowmap,
+                                         GL_DEPTH_ATTACHMENT, 0);
+    glNamedFramebufferDrawBuffer(m_mainlightshadowmapfb.getId(), GL_NONE);
+    glNamedFramebufferReadBuffer(m_mainlightshadowmapfb.getId(), GL_NONE);
+    panicPossibleGLError();
 }
 void HDSSSApplication::initDeferredPass() {
     m_deferredfb.init();
@@ -220,6 +236,10 @@ void HDSSSApplication::gui() {
                     "Scene meshes: %d\n"
                     "Scene triangles: %d%s",
                     (int)m_scene.countMesh(), triangleCount, base);
+                ImGui::TextWrapped("Camera position: %.2f %.2f %.2f",
+                                   m_maincam.getPosition().x,
+                                   m_maincam.getPosition().y,
+                                   m_maincam.getPosition().z);
             }
             if (ImGui::CollapsingHeader("High distance SSS info",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {}
@@ -270,10 +290,8 @@ void HDSSSApplication::gui() {
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
         vector<shared_ptr<Texture2D>> textures{
-            m_gbuffers.albedo,
-            m_gbuffers.normal,
-            m_gbuffers.position,
-        };
+            m_gbuffers.albedo, m_gbuffers.normal, m_gbuffers.position,
+            m_mainlightshadowmap};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -333,6 +351,36 @@ void HDSSSApplication::gbufferPass() {
     m_gbufferfb.unbind();
 }
 
+void HDSSSApplication::shadowMapPass() {
+    // render shadow map here
+    m_mainlightshadowmapfb.bind();
+    int vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    glViewport(0, 0, SHADOWMAP_RESOLUION[0], SHADOWMAP_RESOLUION[1]);
+    glEnable(GL_DEPTH_TEST);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    m_shadowmapshader.use();
+    // directional light matrix
+    const auto& mainLight = m_lights[0];
+    CHECK_EQ(mainLight.type, LightType::DIRECTIONAL);
+    glm::mat4 lightSpaceMatrix = mainLight.getLightSpaceMatrix();
+
+    m_shadowmapshader.setUniform("lightSpaceMatrix", lightSpaceMatrix);
+
+    m_scene.draw(
+        m_shadowmapshader,
+        [this](const auto& scene, const auto& mesh) {
+            m_mvp.model = scene.getModelMatrix() * mesh.m_objmat;
+            m_mvpbuffer.updateData(offsetof(MVP, model), sizeof(m_mvp.model),
+                                   &m_mvp.model);
+        },
+        GL_FILL, 0);
+
+    m_mainlightshadowmapfb.unbind();
+    glViewport(vp[0], vp[1], vp[2], vp[3]);
+}
+
 void HDSSSApplication::deferredPass() {
     // render gbuffer here
 
@@ -348,6 +396,9 @@ void HDSSSApplication::deferredPass() {
     m_deferredshader.setTexture(1, *m_gbuffers.normal);
     m_deferredshader.setTexture(2, *m_gbuffers.albedo);
     m_deferredshader.setTexture(3, *m_gbuffers.sssMask);
+    m_deferredshader.setTexture(4, *m_mainlightshadowmap);
+    m_deferredshader.setUniform("mainLightMatrix",
+                                m_lights[0].getLightSpaceMatrix());
 
     m_deferredshader.setUniform("uCameraPosition", m_maincam.getPosition());
     {
@@ -432,6 +483,8 @@ void HDSSSApplication::loop() {
 
     gbufferPass();
 
+    shadowMapPass();
+
     deferredPass();
 
     finalScreenPass();
@@ -444,14 +497,7 @@ void HDSSSApplication::loop() {
 }
 
 void HDSSSApplication::afterCleanup() {
-    ofstream ofs("camera.txt");
-    auto p = m_maincam.getPosition();
-    auto up = m_maincam.up;
-    auto yaw = m_maincam.yaw;
-    auto pitch = m_maincam.pitch;
-    auto aspect = m_maincam.m_aspect;
-    ofs << p.x << " " << p.y << " " << p.z << endl;
-    ofs << up.x << " " << up.y << " " << up.z << endl;
-    ofs << yaw << " " << pitch << " " << aspect;
+    ofstream ofs("camera.bin", ios::binary);
+    ofs.write((char*)&m_maincam, sizeof(Camera));
     ofs.close();
 }

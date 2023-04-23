@@ -44,3 +44,5 @@ build/
 # MacOS Cache
 .DS_Store
 .vscode/
+camera.txt
+camera.bin

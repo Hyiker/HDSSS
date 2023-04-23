@@ -24,6 +24,7 @@ struct ShaderLight {
     void setPosition(const glm::vec3& p) { position = glm::vec4(p, 1); }
     void setDirection(const glm::vec3& d);
     void setColor(const glm::vec3& c) { color = glm::vec4(c, 1); }
+    glm::mat4 getLightSpaceMatrix() const;
 };
 // TODO
 // ShaderLight createSpotLight(const glm::vec3& p, const glm::vec3& o,

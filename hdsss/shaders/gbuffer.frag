@@ -11,7 +11,7 @@ layout(location = 4) in vec3 vBitangent;
 layout(location = 0) out vec4 FragPosition;
 layout(location = 1) out vec3 FragNormal;
 layout(location = 2) out vec4 FragAlbedo;
-layout(location = 3) out uint FragSSSMask;
+layout(location = 3) out float FragSSSMask;
 
 uniform vec3 uCameraPosition;
 

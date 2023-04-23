@@ -1,25 +1,9 @@
 add_rules("mode.debug", "mode.release")
 
-
-target("HDSSS")
-    set_kind("binary")
-    add_includedirs("include")
-    add_files("src/*.cpp")
-    set_languages("c11", "cxx20")
-    
-    add_deps("loo")
-
-    add_defines("_CRT_SECURE_NO_WARNINGS")
-    set_policy("build.warning", true)
-    set_warnings("all", "extra")
-
-
-    -- solve msvc unfriendly to unicode and utf8
-    add_defines( "UNICODE", "_UNICODE")
-    add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})
-
+target("shaders")
+    set_kind("phony")
     -- spirv shader compilation
-    on_config("windows", "linux", function (target) 
+    on_build("windows", "linux", function (target) 
         local shader_src = path.join("$(projectdir)", "hdsss", "shaders")
         local shader_target = path.join("$(projectdir)", "hdsss", "include", "shaders")
         local shader_inc = path.join("$(projectdir)", "loo", "shader")
@@ -77,5 +61,24 @@ static const std::vector<unsigned char> %s = {%s};
             cprintf("${bright green}[INFO] ${clear}%s generated\n", cpp_target)
             ::continue::
         end
-
     end)
+    
+
+target("HDSSS")
+    set_kind("binary")
+    add_includedirs("include")
+    add_files("src/*.cpp")
+    set_languages("c11", "cxx20")
+    
+    add_deps("loo")
+
+    add_defines("_CRT_SECURE_NO_WARNINGS")
+    set_policy("build.warning", true)
+    set_warnings("all", "extra")
+
+
+    -- solve msvc unfriendly to unicode and utf8
+    add_defines( "UNICODE", "_UNICODE")
+    add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})
+
+    

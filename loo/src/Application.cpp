@@ -41,13 +41,21 @@ Application::Application(int width, int height, const std::string& title)
     // glfwSwapInterval(false);
 }
 
-GLFWwindow* Application::getWindow() const { return window; }
+GLFWwindow* Application::getWindow() const {
+    return window;
+}
 
-void Application::exit() { state = stateExit; }
+void Application::exit() {
+    state = stateExit;
+}
 
-float Application::getFrameDeltaTime() const { return deltaTime; }
+float Application::getFrameDeltaTime() const {
+    return deltaTime;
+}
 
-float Application::getTime() const { return time; }
+float Application::getTime() const {
+    return time;
+}
 
 void Application::run() {
     state = stateRun;
@@ -57,7 +65,8 @@ void Application::run() {
 
     time = glfwGetTime();
 
-    while (state == stateRun && !glfwWindowShouldClose(window)) {
+    while (state == stateRun && !glfwWindowShouldClose(window) &&
+           !glfwGetKey(window, GLFW_KEY_ESCAPE)) {
         // set glfwPointer to current window just to make sure callback get the
         // right context
         glfwSetWindowUserPointer(getWindow(), this);
@@ -128,18 +137,30 @@ int Application::getFramebufferHeight() {
     glfwGetFramebufferSize(getWindow(), &_, &height);
     return height;
 }
-int Application::getWindowWidth() { return width; }
+int Application::getWindowWidth() {
+    return width;
+}
 
-int Application::getWindowHeight() { return height; }
+int Application::getWindowHeight() {
+    return height;
+}
 #else
-int Application::getWidth() { return width; }
+int Application::getWidth() {
+    return width;
+}
 
-int Application::getHeight() { return height; }
+int Application::getHeight() {
+    return height;
+}
 #endif
 
-float Application::getWindowRatio() { return float(width) / float(height); }
+float Application::getWindowRatio() {
+    return float(width) / float(height);
+}
 
-bool Application::windowDimensionChanged() { return dimensionChanged; }
+bool Application::windowDimensionChanged() {
+    return dimensionChanged;
+}
 void Application::initGLFW() {
     // initialize the GLFW library
     LOG(INFO) << "Initializing GLFW..." << endl;

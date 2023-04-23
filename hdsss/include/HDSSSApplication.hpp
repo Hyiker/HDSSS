@@ -31,6 +31,7 @@ class HDSSSApplication : public loo::Application {
 
    private:
     void initGBuffers();
+    void initShadowMap();
     void initDeferredPass();
 
     void loop() override;
@@ -38,6 +39,7 @@ class HDSSSApplication : public loo::Application {
     void scene();
     void skyboxPass();
     void gbufferPass();
+    void shadowMapPass();
     void deferredPass();
     void finalScreenPass();
     void highDistanceSSS();
@@ -60,6 +62,10 @@ class HDSSSApplication : public loo::Application {
     loo::UniformBuffer m_mvpbuffer;
     loo::UniformBuffer m_lightsbuffer;
     std::vector<loo::ShaderLight> m_lights;
+
+    std::shared_ptr<loo::Texture2D> m_mainlightshadowmap;
+    loo::Framebuffer m_mainlightshadowmapfb;
+    loo::ShaderProgram m_shadowmapshader;
 
     // gbuffer
     struct GBuffer {

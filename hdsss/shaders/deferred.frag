@@ -7,8 +7,10 @@ layout(binding = 0) uniform sampler2D GBufferPosition;
 layout(binding = 1) uniform sampler2D GBufferNormal;
 layout(binding = 2) uniform sampler2D GBufferAlbedo;
 layout(binding = 3) uniform isampler2D GBufferSSSMask;
+layout(binding = 4) uniform sampler2D MainLightShadowMap;
 
-uniform vec3 uCameraPosition;
+uniform mat4 mainLightMatrix;
+uniform vec3 cameraPosition;
 
 in vec2 texCoord;
 out vec4 FragColor;
@@ -18,20 +20,37 @@ layout(std140, binding = 1) uniform LightBlock {
     int nLights;
 };
 
+float computeShadow(vec3 positionWS) {
+    vec4 positionLS = mainLightMatrix * vec4(positionWS, 1.0);
+    vec3 positionNDC = positionLS.xyz / positionLS.w;
+    positionNDC = positionNDC * 0.5 + 0.5;
+    float shadow = 0.0;
+    float bias = 0.005;
+    float shadowMapDepth = texture(MainLightShadowMap, positionNDC.xy).r;
+    if (positionNDC.z - bias > shadowMapDepth) {
+        shadow = 1.0;
+    }
+    return shadow;
+}
+
 void main() {
     vec3 positionWS;
     vec3 normalWS;
     // diffuse(rgb) + specular(a)
     vec4 albedo;
     int sssMask;
-    positionWS = texture(GBufferPosition, texCoord).rgb;
-    normalWS = texture(GBufferNormal, texCoord).rgb;
-    albedo.rgb = texture(GBufferAlbedo, texCoord).rgb;
-    albedo.a = texture(GBufferAlbedo, texCoord).a;
+    positionWS = texture(GBufferPosition, texCoord).xyz;
+    normalWS = texture(GBufferNormal, texCoord).xyz;
+    albedo = texture(GBufferAlbedo, texCoord).rgba;
     sssMask = texture(GBufferSSSMask, texCoord).r;
 
-    vec3 V = normalize(uCameraPosition - positionWS);
+    vec3 V = normalize(cameraPosition - positionWS);
     vec3 color = vec3(0.0);
+    SurfaceParams params;
+    params.albedo = albedo;
+    params.shininess = 50.0;
+    params.viewDir = V;
+    params.normal = normalWS;
     for (int i = 0; i < nLights; i++) {
         ShaderLight light = lights[i];
         float distance = 1.0;
@@ -39,17 +58,15 @@ void main() {
         switch (light.type) {
             case LIGHT_TYPE_DIRECTIONAL:
                 L = normalize(-lights[0].direction.xyz);
-                H = normalize(V + L);
                 break;
             default:
                 continue;
         }
+        params.lightDir = L;
         float attenuation = light.intensity / (distance * distance);
-
-        vec3 Ld = albedo.rgb * attenuation * max(dot(L, normalWS), 0.0);
-        vec3 Ls = max(vec3(0.0), vec3(albedo.a) * attenuation *
-                                     pow(max(0.0, dot(H, normalWS)), 200.0));
-        color += light.color.rgb * (Ld + Ls);
+        float shadow = computeShadow(positionWS);
+        color += computeBlinnPhongLocalLighting(params, light, attenuation) *
+                 (1.0 - shadow);
     }
     FragColor = vec4(color, 1.0);
 }
