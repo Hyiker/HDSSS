@@ -70,7 +70,7 @@ target("HDSSS")
     add_files("src/*.cpp")
     set_languages("c11", "cxx20")
     
-    add_deps("loo")
+    add_deps("loo", "shaders")
 
     add_defines("_CRT_SECURE_NO_WARNINGS")
     set_policy("build.warning", true)

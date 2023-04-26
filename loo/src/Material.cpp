@@ -45,14 +45,18 @@ std::shared_ptr<BaseMaterial> createBaseMaterialFromAssimp(
     glm::vec3 diffuse = aiColor3D2Glm(color);
     aMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color);
     glm::vec3 specular = aiColor3D2Glm(color);
-    aMaterial->Get(AI_MATKEY_COLOR_SPECULAR, color);
+    color = aiColor3D(0, 0, 0);
+    // using emissive to store transparent color
+    // a hack for wavefront obj
+    aMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color);
+    glm::vec3 transparent = aiColor3D2Glm(color);
 
     float shininess, _ior;
     aMaterial->Get(AI_MATKEY_SHININESS, shininess);
     aMaterial->Get(AI_MATKEY_REFRACTI, _ior);
 
     auto material = make_shared<BaseMaterial>(ambient, diffuse, specular,
-                                              glm::vec3(_ior), shininess);
+                                              transparent, _ior, shininess);
     material->ambientTex =
         createMaterialTextures(aMaterial, aiTextureType_AMBIENT, objParent);
 

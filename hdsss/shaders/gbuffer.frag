@@ -11,7 +11,7 @@ layout(location = 4) in vec3 vBitangent;
 layout(location = 0) out vec4 FragPosition;
 layout(location = 1) out vec3 FragNormal;
 layout(location = 2) out vec4 FragAlbedo;
-layout(location = 3) out float FragSSSMask;
+layout(location = 3) out vec4 FragTransparentIOR;
 
 uniform vec3 uCameraPosition;
 
@@ -27,7 +27,7 @@ layout(std140, binding = 2) uniform SimpleMaterial {
     vec4 diffuse;
     vec4 specular;
 
-    vec4 ior;
+    vec4 transparentIOR;
     float shininess;
 }
 simpleMaterial;
@@ -81,5 +81,5 @@ void main() {
     FragAlbedo.rgb =
         texture(diffuseTex, texCoord).rgb * simpleMaterial.diffuse.rgb;
     FragAlbedo.a = texture(specularTex, texCoord).a * simpleMaterial.specular.r;
-    FragSSSMask = 1;
+    FragTransparentIOR.rgba = simpleMaterial.transparentIOR.rgba;
 }

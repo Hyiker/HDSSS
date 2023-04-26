@@ -6,7 +6,7 @@
 layout(binding = 0) uniform sampler2D GBufferPosition;
 layout(binding = 1) uniform sampler2D GBufferNormal;
 layout(binding = 2) uniform sampler2D GBufferAlbedo;
-layout(binding = 3) uniform isampler2D GBufferSSSMask;
+layout(binding = 3) uniform isampler2D GBufferTransparentIOR;
 layout(binding = 4) uniform sampler2D MainLightShadowMap;
 
 uniform mat4 mainLightMatrix;
@@ -46,17 +46,17 @@ void main() {
     vec3 normalWS;
     // diffuse(rgb) + specular(a)
     vec4 albedo;
-    int sssMask;
+    vec3 transparent;
+    float ior;
     positionWS = texture(GBufferPosition, texCoord).xyz;
     normalWS = texture(GBufferNormal, texCoord).xyz;
     albedo = texture(GBufferAlbedo, texCoord).rgba;
-    sssMask = texture(GBufferSSSMask, texCoord).r;
 
     vec3 V = normalize(cameraPosition - positionWS);
     vec3 color = vec3(0.0);
     SurfaceParams params;
     params.albedo = albedo;
-    params.shininess = 50.0;
+    params.shininess = 200.0;
     params.viewDir = V;
     params.normal = normalWS;
     for (int i = 0; i < nLights; i++) {
@@ -71,9 +71,9 @@ void main() {
                 continue;
         }
         params.lightDir = L;
-        float attenuation = light.intensity / (distance * distance);
+        float intensity = light.intensity / (distance * distance);
         float shadow = computeShadow(positionWS);
-        color += computeBlinnPhongLocalLighting(params, light, attenuation) *
+        color += computeBlinnPhongLocalLighting(params, light, intensity) *
                  (1.0 - shadow);
     }
     FragColor = vec4(color, 1.0);

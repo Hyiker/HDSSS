@@ -29,7 +29,7 @@
 using namespace loo;
 using namespace std;
 
-static constexpr int SHADOWMAP_RESOLUION[2]{1024, 1024};
+static constexpr int SHADOWMAP_RESOLUION[2]{2048, 2048};
 
 static void mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {
     ImGui_ImplGlfw_CursorPosCallback(window, xposIn, yposIn);
@@ -144,14 +144,18 @@ HDSSSApplication::HDSSSApplication(int width, int height,
 void HDSSSApplication::initGBuffers() {
     m_gbufferfb.init();
 
+    int mipmapLevel = mipmapLevelFromSize(getWidth(), getHeight());
+
     m_gbuffers.position = make_shared<Texture2D>();
     m_gbuffers.position->init();
-    m_gbuffers.position->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_gbuffers.position->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
+                                      mipmapLevel);
     m_gbuffers.position->setSizeFilter(GL_NEAREST, GL_NEAREST);
 
     m_gbuffers.normal = make_shared<Texture2D>();
     m_gbuffers.normal->init();
-    m_gbuffers.normal->setupStorage(getWidth(), getHeight(), GL_RGB8, 1);
+    m_gbuffers.normal->setupStorage(getWidth(), getHeight(), GL_RGB8,
+                                    mipmapLevel);
     m_gbuffers.normal->setSizeFilter(GL_NEAREST, GL_NEAREST);
 
     m_gbuffers.albedo = make_shared<Texture2D>();
@@ -159,10 +163,11 @@ void HDSSSApplication::initGBuffers() {
     m_gbuffers.albedo->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
     m_gbuffers.albedo->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
-    m_gbuffers.sssMask = make_shared<Texture2D>();
-    m_gbuffers.sssMask->init();
-    m_gbuffers.sssMask->setupStorage(getWidth(), getHeight(), GL_R8, 1);
-    m_gbuffers.sssMask->setSizeFilter(GL_NEAREST, GL_NEAREST);
+    m_gbuffers.transparentIOR = make_shared<Texture2D>();
+    m_gbuffers.transparentIOR->init();
+    m_gbuffers.transparentIOR->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
+                                            1);
+    m_gbuffers.transparentIOR->setSizeFilter(GL_NEAREST, GL_NEAREST);
     panicPossibleGLError();
 
     m_gbuffers.depthrb.init(GL_DEPTH_COMPONENT32, getWidth(), getHeight());
@@ -170,7 +175,8 @@ void HDSSSApplication::initGBuffers() {
     m_gbufferfb.attachTexture(*m_gbuffers.position, GL_COLOR_ATTACHMENT0, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.normal, GL_COLOR_ATTACHMENT1, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.albedo, GL_COLOR_ATTACHMENT2, 0);
-    m_gbufferfb.attachTexture(*m_gbuffers.sssMask, GL_COLOR_ATTACHMENT3, 0);
+    m_gbufferfb.attachTexture(*m_gbuffers.transparentIOR, GL_COLOR_ATTACHMENT3,
+                              0);
     m_gbufferfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
 }
 
@@ -290,7 +296,7 @@ void HDSSSApplication::gui() {
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
         vector<shared_ptr<Texture2D>> textures{
-            m_gbuffers.albedo, m_gbuffers.normal, m_gbuffers.position,
+            m_gbuffers.albedo, m_gbuffers.normal, m_gbuffers.transparentIOR,
             m_mainlightshadowmap};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
@@ -344,6 +350,7 @@ void HDSSSApplication::gbufferPass() {
 
     m_gbufferfb.enableAttachments({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
                                    GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3});
+
     clear();
 
     scene();
@@ -395,7 +402,7 @@ void HDSSSApplication::deferredPass() {
     m_deferredshader.setTexture(0, *m_gbuffers.position);
     m_deferredshader.setTexture(1, *m_gbuffers.normal);
     m_deferredshader.setTexture(2, *m_gbuffers.albedo);
-    m_deferredshader.setTexture(3, *m_gbuffers.sssMask);
+    m_deferredshader.setTexture(3, *m_gbuffers.transparentIOR);
     m_deferredshader.setTexture(4, *m_mainlightshadowmap);
     m_deferredshader.setUniform("mainLightMatrix",
                                 m_lights[0].getLightSpaceMatrix());
@@ -416,6 +423,13 @@ void HDSSSApplication::deferredPass() {
     skyboxPass();
     m_gbufferfb.unbind();
 }
+
+void HDSSSApplication::translucencyPass() {}
+
+void HDSSSApplication::upscaleTranslucencyPass() {}
+
+void HDSSSApplication::SSSSPass() {}
+
 void HDSSSApplication::scene() {
     glEnable(GL_DEPTH_TEST);
     m_maincam.getViewMatrix(m_mvp.view);
@@ -441,17 +455,7 @@ void HDSSSApplication::scene() {
         m_wireframe ? GL_LINE : GL_FILL, 0);
     logPossibleGLError();
 }
-// Deep screen space process:
-// 1. shuffle scene position and normal onto each layer of  multiresolution
-//    texture array
-// 2. scene surfelization
-// 3. apply splatting for each surfel and each multi-resolution texture layer
-//    save the shading result in a multi-layer texture array
-void HDSSSApplication::highDistanceSSS() {
-    m_maincam.getViewMatrix(m_mvp.view);
-    m_maincam.getProjectionMatrix(m_mvp.projection);
-    m_mvpbuffer.updateData(0, sizeof(MVP), &m_mvp);
-}
+
 void HDSSSApplication::clear() {
     glClearColor(0.f, 0.f, 0.f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -480,14 +484,21 @@ void HDSSSApplication::loop() {
     // render
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+    {
+        gbufferPass();
 
-    gbufferPass();
+        shadowMapPass();
 
-    shadowMapPass();
+        deferredPass();
 
-    deferredPass();
+        translucencyPass();
 
-    finalScreenPass();
+        upscaleTranslucencyPass();
+
+        SSSSPass();
+
+        finalScreenPass();
+    }
 
     keyboard();
 

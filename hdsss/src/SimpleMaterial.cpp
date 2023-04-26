@@ -37,7 +37,7 @@ shared_ptr<SimpleMaterial> SimpleMaterial::getDefault() {
     if (!defaultMaterial) {
         defaultMaterial = std::make_shared<SimpleMaterial>(
             glm::vec3(0, 0, 0), glm::vec3(1, 1, 1), glm::vec3(0, 0, 0),
-            glm::vec3(1.5), 1.0);
+            glm::vec3(0.0), 1.0, 200.0);
     }
     return defaultMaterial;
 }
@@ -48,7 +48,7 @@ std::shared_ptr<SimpleMaterial> convertSimpleMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial) {
     auto simpleMaterial = std::make_shared<SimpleMaterial>(
         baseMaterial.ambient, baseMaterial.diffuse, baseMaterial.specular,
-        baseMaterial.ior, baseMaterial.shininess);
+        baseMaterial.transparent, baseMaterial.ior, baseMaterial.shininess);
     simpleMaterial->ambientTex = baseMaterial.ambientTex;
     simpleMaterial->diffuseTex = baseMaterial.diffuseTex;
     simpleMaterial->displacementTex = baseMaterial.displacementTex;

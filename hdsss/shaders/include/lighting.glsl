@@ -18,13 +18,14 @@ struct SurfaceParams {
     vec3 normal;
     vec3 viewDir;
     vec3 lightDir;
+
     vec4 albedo;
     float shininess;
 };
 const int LIGHT_TYPE_SPOT = 0, LIGHT_TYPE_POINT = 1, LIGHT_TYPE_DIRECTIONAL = 2;
 
 vec3 computeBlinnPhongLocalLighting(in SurfaceParams surfaceParams,
-                                    in ShaderLight light, float attenuation) {
+                                    in ShaderLight light, float intensity) {
     vec3 N = normalize(surfaceParams.normal),
          V = normalize(surfaceParams.viewDir),
          L = normalize(surfaceParams.lightDir);
@@ -32,9 +33,9 @@ vec3 computeBlinnPhongLocalLighting(in SurfaceParams surfaceParams,
 
     vec3 H = normalize(V + L);
 
-    vec3 Ld = albedo.rgb * attenuation * max(dot(L, N), 0.0);
+    vec3 Ld = albedo.rgb * intensity * max(dot(L, N), 0.0);
     vec3 Ls =
-        max(vec3(0.0), vec3(albedo.a) * attenuation *
+        max(vec3(0.0), vec3(albedo.a) * intensity *
                            pow(max(0.0, dot(H, N)), surfaceParams.shininess));
     return light.color.rgb * (Ld);
 }

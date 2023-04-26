@@ -15,6 +15,15 @@
 
 namespace loo {
 
+inline int mipmapLevelFromSize(int width, int height) {
+    unsigned int lvl = 0;
+    while ((width | height) >> 1) {
+        width >>= 1;
+        height >>= 1;
+        lvl++;
+    }
+    return lvl;
+}
 template <GLenum Target>
 class LOO_EXPORT Texture {
    protected:
@@ -45,14 +54,7 @@ class LOO_EXPORT Texture {
     GLuint getId() const { return m_id; };
     constexpr GLenum getType() const { return Target; }
     int getMipmapLevels() const {
-        unsigned int lvl = 0;
-        int width = this->width, height = this->height;
-        while ((width | height) >> 1) {
-            width >>= 1;
-            height >>= 1;
-            lvl++;
-        }
-        return lvl;
+        return mipmapLevelFromSize(this->width, this->height);
     }
     void generateMipmap() {
 #ifdef OGL_46

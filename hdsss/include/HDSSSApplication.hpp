@@ -38,11 +38,20 @@ class HDSSSApplication : public loo::Application {
     void gui();
     void scene();
     void skyboxPass();
+    // first pass: gbuffer
     void gbufferPass();
+    // second pass: shadow map
     void shadowMapPass();
+    // third pass: deferred pass(illumination)
     void deferredPass();
+    // fourth pass: translucency effect
+    void translucencyPass();
+    // fifth pass: upscale transluency effect
+    void upscaleTranslucencyPass();
+    // sixth pass: screen space subsurface scattering effect
+    void SSSSPass();
+    // seventh pass: merge all effects
     void finalScreenPass();
-    void highDistanceSSS();
     void clear();
     void keyboard();
     void mouse();
@@ -72,7 +81,9 @@ class HDSSSApplication : public loo::Application {
         std::shared_ptr<loo::Texture2D> position;
         std::shared_ptr<loo::Texture2D> normal;
         std::shared_ptr<loo::Texture2D> albedo;
-        std::shared_ptr<loo::Texture2D> sssMask;
+        // using this texture also as SSS mask
+        // disable SSS by setting transparent = vec3(0)
+        std::shared_ptr<loo::Texture2D> transparentIOR;
         loo::Renderbuffer depthrb;
     } m_gbuffers;
     loo::Framebuffer m_gbufferfb;

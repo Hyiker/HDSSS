@@ -24,10 +24,11 @@ struct BaseMaterial : public Material {
 
     void bind(const ShaderProgram& sp) override { NOT_IMPLEMENTED_RUNTIME(); }
     BaseMaterial(glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular,
-                 glm::vec3 ior, float shininess)
+                 glm::vec3 transparent, float ior, float shininess)
         : ambient(ambient),
           diffuse(diffuse),
           specular(specular),
+          transparent(transparent),
           ior(ior),
           shininess(shininess) {}
     std::shared_ptr<loo::Texture2D> ambientTex{};
@@ -40,8 +41,9 @@ struct BaseMaterial : public Material {
     glm::vec3 ambient;
     glm::vec3 diffuse;
     glm::vec3 specular;
+    glm::vec3 transparent;
 
-    glm::vec3 ior;
+    float ior;
     float shininess;
 };
 std::shared_ptr<loo::BaseMaterial> createBaseMaterialFromAssimp(

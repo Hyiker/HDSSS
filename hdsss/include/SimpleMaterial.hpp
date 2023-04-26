@@ -18,14 +18,16 @@ struct ShaderSimpleMaterial {
     glm::vec4 diffuse;
     glm::vec4 specular;
 
-    glm::vec4 ior;
+    // vec3 transparent + float ior
+    glm::vec4 transparentIOR;
     float shininess;
     ShaderSimpleMaterial(glm::vec3 ambient, glm::vec3 diffuse,
-                         glm::vec3 specular, glm::vec3 ior, float shininess)
+                         glm::vec3 specular, glm::vec3 transparent, float ior,
+                         float shininess)
         : ambient(ambient, 1),
           diffuse(diffuse, 1),
           specular(specular, 1),
-          ior(ior, 1),
+          transparentIOR(transparent, ior),
           shininess(shininess) {}
 };
 class SimpleMaterial : public loo::Material {
@@ -37,8 +39,9 @@ class SimpleMaterial : public loo::Material {
    public:
     ShaderSimpleMaterial& getShaderMaterial() { return m_shadermaterial; }
     SimpleMaterial(glm::vec3 ambient, glm::vec3 diffuse, glm::vec3 specular,
-                   glm::vec3 ior, float shininess)
-        : m_shadermaterial(ambient, diffuse, specular, ior, shininess) {
+                   glm::vec3 transparent, float ior, float shininess)
+        : m_shadermaterial(ambient, diffuse, specular, transparent, ior,
+                           shininess) {
         if (SimpleMaterial::uniformBuffer == nullptr) {
             SimpleMaterial::uniformBuffer =
                 std::make_unique<loo::UniformBuffer>(

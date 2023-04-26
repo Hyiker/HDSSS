@@ -15,7 +15,8 @@ glm::mat4 ShaderLight::getLightSpaceMatrix() const {
             glm::vec3 up{0.0f, 1.0f, 0.0f};
             if (direction.x == 0.0f && direction.z == 0.0f)
                 up = glm::vec3(1.0f, 0.0f, 0.0f);
-            return glm::ortho<float>(-0.2f, 0.2f, -0.2f, 0.2f, -0.2f, 0.2f) *
+            return glm::ortho<float>(-0.13f, 0.13f, -0.13f, 0.13f, -0.2f,
+                                     0.2f) *
                    glm::lookAt(glm::vec3(0, 0, 0),
                                glm::normalize(glm::vec3(direction)), up);
         }
