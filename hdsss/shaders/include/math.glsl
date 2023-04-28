@@ -2,6 +2,7 @@
 #define DEEPSCREENSPACE_SHADERS_INCLUDE_MATH_GLSL
 #define PI 3.14159265359
 #define PI_SQR 9.8696044011
+#define PI_INV 0.3183098862
 
 float triangleArea(in vec3 a, in vec3 b, in vec3 c) {
     vec3 e1 = b - a, e2 = c - a;

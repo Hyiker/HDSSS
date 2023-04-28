@@ -23,6 +23,12 @@
 #include "shaders/shadowmap.vert.hpp"
 #include "shaders/skybox.frag.hpp"
 #include "shaders/skybox.vert.hpp"
+#include "shaders/surfelize.tesc.hpp"
+#include "shaders/surfelize.tese.hpp"
+#include "shaders/surfelize.vert.hpp"
+#include "shaders/translucency.frag.hpp"
+#include "shaders/translucency.geom.hpp"
+#include "shaders/translucency.vert.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/ext.hpp"
@@ -104,6 +110,16 @@ HDSSSApplication::HDSSSApplication(int width, int height,
                         Shader(SHADOWMAP_FRAG, ShaderType::Fragment)},
       m_deferredshader{Shader(DEFERRED_VERT, ShaderType::Vertex),
                        Shader(DEFERRED_FRAG, ShaderType::Fragment)},
+      m_translucencyshader{Shader(TRANSLUCENCY_VERT, ShaderType::Vertex),
+                           Shader(TRANSLUCENCY_GEOM, ShaderType::Geometry),
+                           Shader(TRANSLUCENCY_FRAG, ShaderType::Fragment)},
+      m_surfelizeshader{
+          Shader(SURFELIZE_VERT, ShaderType::Vertex),
+          Shader(SURFELIZE_TESC, ShaderType::TessellationControl),
+          Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
+      },
+      m_surfelssbo(1, N_SURFELS_MAX * sizeof(SurfelData)),
+      m_surfelcounter(0),
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad),
       m_hdsss(getWidth(), getHeight()) {
@@ -136,6 +152,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     initGBuffers();
     initShadowMap();
     initDeferredPass();
+    initTranslucencyPass();
 
     // final pass related
     { m_finalprocess.init(); }
@@ -197,14 +214,65 @@ void HDSSSApplication::initShadowMap() {
 }
 void HDSSSApplication::initDeferredPass() {
     m_deferredfb.init();
-    m_deferredtex = make_shared<Texture2D>();
-    m_deferredtex->init();
-    m_deferredtex->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
-    m_deferredtex->setSizeFilter(GL_LINEAR, GL_LINEAR);
-    m_deferredfb.attachTexture(*m_deferredtex, GL_COLOR_ATTACHMENT0, 0);
+    m_transmitted_irradiance = make_shared<Texture2D>();
+    m_transmitted_irradiance->init();
+    m_transmitted_irradiance->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
+                                           -1);
+    m_transmitted_irradiance->setSizeFilter(GL_LINEAR, GL_LINEAR);
+    m_deferredfb.attachTexture(*m_transmitted_irradiance, GL_COLOR_ATTACHMENT0,
+                               0);
     m_deferredfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
     panicPossibleGLError();
 }
+
+void HDSSSApplication::initTranslucencyPass() {
+    initSurfelizePass();
+
+    m_translucencyfb.init();
+
+    m_translucencytex = make_unique<Texture2D>();
+    m_translucencytex->init();
+    m_translucencytex->setupStorage(getWidth() >> 2, getHeight() >> 2,
+                                    GL_RGB32F, 1);
+    m_translucencytex->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+
+    m_translucencyfb.attachTexture(*m_translucencytex, GL_COLOR_ATTACHMENT0, 0);
+    m_translucencyfb.enableAttachments({GL_COLOR_ATTACHMENT0});
+
+    panicPossibleGLError();
+}
+
+void HDSSSApplication::initSurfelizePass() {
+    GLuint vao, vbo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferStorage(GL_ARRAY_BUFFER, sizeof(SurfelData) * N_SURFELS_MAX,
+                    nullptr, GL_DYNAMIC_STORAGE_BIT);
+    SurfelData sd{};
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SurfelData), &sd);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+                          (GLvoid*)offsetof(SurfelData, position));
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+                          (GLvoid*)(offsetof(SurfelData, normal)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+                          (GLvoid*)(offsetof(SurfelData, radius)));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    m_surfelbuffer.vao = vao;
+    m_surfelbuffer.vbo = vbo;
+    panicPossibleGLError();
+}
+
 void HDSSSApplication::gui() {
     auto& io = ImGui::GetIO();
     float h = io.DisplaySize.y;
@@ -224,10 +292,11 @@ void HDSSSApplication::gui() {
                     "Frame generation delay: %.3f ms/frame\n"
                     "FPS: %.1f",
                     1000.0f / io.Framerate, io.Framerate);
+
                 const GLubyte* renderer = glGetString(GL_RENDERER);
                 const GLubyte* version = glGetString(GL_VERSION);
-                ImGui::Text("Renderer: %s", renderer);
-                ImGui::Text("OpenGL Version: %s", version);
+                ImGui::TextWrapped("Renderer: %s", renderer);
+                ImGui::TextWrapped("OpenGL Version: %s", version);
                 int triangleCount = m_scene.countTriangle();
                 const char* base = "";
                 if (triangleCount > 5000) {
@@ -248,7 +317,19 @@ void HDSSSApplication::gui() {
                                    m_maincam.getPosition().z);
             }
             if (ImGui::CollapsingHeader("High distance SSS info",
-                                        ImGuiTreeNodeFlags_DefaultOpen)) {}
+                                        ImGuiTreeNodeFlags_DefaultOpen)) {
+                string postfix = "";
+                int nSurfel = m_surfelcounter.getCounter();
+                if (nSurfel > 1000) {
+                    nSurfel /= 1000;
+                    postfix = "k";
+                }
+                if (nSurfel > 1000) {
+                    nSurfel /= 1000;
+                    postfix = "M";
+                }
+                ImGui::Text("Surfel count: %d%s", nSurfel, postfix.c_str());
+            }
         }
     }
 
@@ -280,9 +361,6 @@ void HDSSSApplication::gui() {
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
 
-                ImGui::SliderFloat("Surfelize scale", &m_surfelizescale, 1e-5f,
-                                   1e-1f, "%.5f", ImGuiSliderFlags_Logarithmic);
-
                 ImGui::SliderFloat("Splatting strength", &m_splattingstrength,
                                    1.0f, 1e2f, "%.1f",
                                    ImGuiSliderFlags_Logarithmic);
@@ -295,16 +373,16 @@ void HDSSSApplication::gui() {
         float h_img = h * 0.2,
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
-        vector<shared_ptr<Texture2D>> textures{
-            m_gbuffers.albedo, m_gbuffers.normal, m_gbuffers.transparentIOR,
-            m_mainlightshadowmap};
+        vector<GLuint> textures{
+            m_gbuffers.albedo->getId(), m_gbuffers.normal->getId(),
+            m_gbuffers.transparentIOR->getId(), m_translucencytex->getId()};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
                          windowFlags | ImGuiWindowFlags_NoDecoration)) {
-            for (auto tex : textures) {
-                ImGui::Image((void*)(intptr_t)tex->getId(),
-                             ImVec2(w_img, h_img), ImVec2(0, 1), ImVec2(1, 0));
+            for (auto texId : textures) {
+                ImGui::Image((void*)(intptr_t)texId, ImVec2(w_img, h_img),
+                             ImVec2(0, 1), ImVec2(1, 0));
                 ImGui::SameLine();
             }
         }
@@ -313,10 +391,11 @@ void HDSSSApplication::gui() {
 
 void HDSSSApplication::finalScreenPass() {
     m_finalprocess.render(
-        *m_deferredtex,
+        *m_transmitted_irradiance,
         // m_applysss ? *m_hdsss.getSumUpResult() : Texture2D::getBlackTexture(),
         Texture2D::getBlackTexture(), m_lodvisualize);
 }
+
 void HDSSSApplication::convertMaterial() {
     LOG(INFO) << "Converting material...";
     for (auto& mesh : m_scene.getMeshes()) {
@@ -345,7 +424,6 @@ void HDSSSApplication::skyboxPass() {
 }
 void HDSSSApplication::gbufferPass() {
     // render gbuffer here
-
     m_gbufferfb.bind();
 
     m_gbufferfb.enableAttachments({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
@@ -424,9 +502,77 @@ void HDSSSApplication::deferredPass() {
     m_gbufferfb.unbind();
 }
 
-void HDSSSApplication::translucencyPass() {}
+void HDSSSApplication::surfelizePass() {
+    logPossibleGLError();
+    m_translucencyfb.bind();
 
-void HDSSSApplication::upscaleTranslucencyPass() {}
+    m_surfelizeshader.use();
+
+    glPatchParameteri(GL_PATCH_VERTICES, 3);
+    m_surfelcounter.resetCounter();
+    m_scene.draw(
+        m_surfelizeshader,
+        [this](const auto& scene, const auto& mesh) {
+            m_mvp.model = scene.getModelMatrix() * mesh.m_objmat;
+            m_mvpbuffer.updateData(offsetof(MVP, model), sizeof(m_mvp.model),
+                                   &m_mvp.model);
+        },
+        GL_FILL, DRAW_FLAG_TESSELLATION);
+
+    m_translucencyfb.unbind();
+}
+
+void HDSSSApplication::splattingPass() {
+    m_translucencyfb.bind();
+    storeViewport();
+    glViewport(0, 0, getWidth() >> 2, getHeight() >> 2);
+    clear();
+    glEnable(GL_BLEND);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    glDisable(GL_DEPTH_TEST);
+    glBlendFunc(GL_ONE, GL_ONE);
+    m_translucencyshader.use();
+    if (getSurfelCount()) {
+        m_translucencyshader.setUniform("cameraPos", m_maincam.getPosition());
+        m_translucencyshader.setUniform("viewMatrix",
+                                        m_maincam.getViewMatrix());
+        m_translucencyshader.setUniform("projectionMatrix",
+                                        m_maincam.getProjectionMatrix());
+        m_translucencyshader.setUniform("strength", m_splattingstrength);
+        m_translucencyshader.setUniform("fov", m_maincam.m_fov);
+        m_translucencyshader.setUniform(
+            "framebufferDeviceStep.resolution",
+            glm::ivec2(getWidth() >> 2, getHeight() >> 2));
+        m_translucencyshader.setTexture(0, *m_gbuffers.position);
+        m_translucencyshader.setTexture(1, *m_gbuffers.normal);
+        glBindVertexArray(m_surfelbuffer.vao);
+        glDrawArrays(GL_POINTS, 0, getSurfelCount());
+        logPossibleGLError();
+    }
+    glDisable(GL_BLEND);
+    restoreViewport();
+    m_translucencyfb.unbind();
+}
+
+void HDSSSApplication::translucencyPass() {
+    surfelizePass();
+
+    // m_gbuffers.position->generateMipmap();
+    // m_gbuffers.normal->generateMipmap();
+    // m_transmitted_irradiance->generateMipmap();
+
+    // copy surfel ssbo to vbo
+    glCopyNamedBufferSubData(m_surfelssbo.getId(), m_surfelbuffer.vbo, 0, 0,
+                             m_surfelssbo.getSize());
+    panicPossibleGLError();
+
+    splattingPass();
+    m_translucencytex->generateMipmap();
+}
+
+void HDSSSApplication::upscaleTranslucencyPass() {
+    // TODO: didn't figure out the meaning of this pass
+}
 
 void HDSSSApplication::SSSSPass() {}
 

@@ -1,3 +1,6 @@
+#ifndef HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL
+#define HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL
+#include "./math.glsl"
 struct ShaderLight {
     // spot, point
     vec4 position;
@@ -39,3 +42,21 @@ vec3 computeBlinnPhongLocalLighting(in SurfaceParams surfaceParams,
                            pow(max(0.0, dot(H, N)), surfaceParams.shininess));
     return light.color.rgb * (Ld);
 }
+
+vec3 computeSurfaceIrradiance(in vec3 position, in vec3 normal,
+                              in ShaderLight light) {
+    vec3 N = normalize(normal);
+    vec3 L;
+    float distance = 1.0;
+    switch (light.type) {
+        case LIGHT_TYPE_DIRECTIONAL:
+            L = normalize(-light.direction.xyz);
+            break;
+        default:
+            break;
+    }
+    return light.color.rgb * light.intensity * max(0.0, dot(L, N)) /
+           (distance * distance) * PI_INV;
+}
+
+#endif /* HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL */

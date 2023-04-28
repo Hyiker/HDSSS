@@ -19,4 +19,6 @@ constexpr int SHADER_BINDING_PORT_SM_HEIGHT = 9;
 
 constexpr int SHADER_LIGHTS_MAX = 12;
 
+constexpr int N_SURFELS_MAX = 20000000;
+
 #endif /* HDSSS_INCLUDE_CONSTANTS_HPP */

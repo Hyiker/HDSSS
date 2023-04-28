@@ -80,6 +80,7 @@ class LOO_EXPORT Application {
     int width;
     int height;
     bool dimensionChanged;
+    int m_viewport[4];
     void detectWindowDimensionChange();
 
    protected:
@@ -91,6 +92,8 @@ class LOO_EXPORT Application {
     bool keyBackward();
     bool keyLeft();
     bool keyRight();
+    void storeViewport();
+    void restoreViewport();
 
     virtual void loop();
     virtual void cleanup();

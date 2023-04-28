@@ -219,5 +219,11 @@ bool Application::keyRight() {
     return glfwGetKey(getWindow(), GLFW_KEY_D) == GLFW_PRESS ||
            glfwGetKey(getWindow(), GLFW_KEY_RIGHT) == GLFW_PRESS;
 }
+void Application::storeViewport() {
+    glGetIntegerv(GL_VIEWPORT, m_viewport);
+}
+void Application::restoreViewport() {
+    glViewport(m_viewport[0], m_viewport[1], m_viewport[2], m_viewport[3]);
+}
 
 }  // namespace loo

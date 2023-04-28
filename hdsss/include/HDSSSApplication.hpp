@@ -34,6 +34,9 @@ class HDSSSApplication : public loo::Application {
     void initShadowMap();
     void initDeferredPass();
 
+    void initTranslucencyPass();
+    void initSurfelizePass();
+
     void loop() override;
     void gui();
     void scene();
@@ -44,8 +47,14 @@ class HDSSSApplication : public loo::Application {
     void shadowMapPass();
     // third pass: deferred pass(illumination)
     void deferredPass();
+
     // fourth pass: translucency effect
     void translucencyPass();
+    // fourth pass: subpass 1
+    void surfelizePass();
+    // fourth pass: subpass 2
+    void splattingPass();
+
     // fifth pass: upscale transluency effect
     void upscaleTranslucencyPass();
     // sixth pass: screen space subsurface scattering effect
@@ -90,11 +99,26 @@ class HDSSSApplication : public loo::Application {
     // deferred pass
     loo::ShaderProgram m_deferredshader;
     loo::Framebuffer m_deferredfb;
-    std::shared_ptr<loo::Texture2D> m_deferredtex;
+    std::shared_ptr<loo::Texture2D> m_transmitted_irradiance;
+    // translucent pass
+    loo::ShaderProgram m_translucencyshader;
+
+    loo::ShaderProgram m_surfelizeshader;
+    loo::ShaderStorageBuffer m_surfelssbo;
+    loo::AtomicCounter m_surfelcounter;
+    int getSurfelCount() const {
+        return std::min((int)m_surfelcounter.getCounter(), N_SURFELS_MAX);
+    }
+    struct SurfelBuffer {
+        GLuint vao;
+        GLuint vbo;
+    } m_surfelbuffer;
+    loo::Framebuffer m_translucencyfb;
+    std::unique_ptr<loo::Texture2D> m_translucencytex;
 
     // scene surfelize
     loo::Framebuffer m_surfelizefb;
-    float m_surfelizescale{0.00085f}, m_splattingstrength{4.5f};
+    float m_surfelizescale{0.00085f}, m_splattingstrength{1.0f};
 
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;
