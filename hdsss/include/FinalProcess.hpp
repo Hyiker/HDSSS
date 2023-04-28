@@ -5,6 +5,14 @@
 #include <loo/Shader.hpp>
 #include <loo/Texture.hpp>
 #include <memory>
+
+struct FinalPassOptions {
+    bool diffuse{true};
+    bool specular{true};
+    bool translucency{false};
+    bool SSS{false};
+    bool directOutput{false};
+};
 class FinalProcess {
     loo::ShaderProgram m_shader;
     int m_width, m_height;
@@ -15,9 +23,13 @@ class FinalProcess {
     void init();
     // if use direct output, this pass will just out put the previous rendering
     // result without doing any addition postprocessing
-    void render(const loo::Texture2D& screenTexture,
-                const loo::Texture2D& subsurfaceScattering,
-                bool directOutput = false);
+    void render(const loo::Texture2D& diffuseTexture,
+                const loo::Texture2D& specularTexture,
+                const loo::Texture2D& translucencyTexture,
+                const loo::Texture2D& sssTexture,
+                const loo::Texture2D& transparentIORTexture,
+                const loo::Texture2D& skyboxTexture,
+                const FinalPassOptions& options);
 };
 
 #endif /* HDSSS_INCLUDE_FINAL_PROCESS_HPP */

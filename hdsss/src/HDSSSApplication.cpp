@@ -9,6 +9,7 @@
 #include <vector>
 #include "SimpleMaterial.hpp"
 
+#include "Surfel.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/quaternion_geometric.hpp"
@@ -96,7 +97,7 @@ void HDSSSApplication::loadGLTF(const std::string& filename, float scaling) {
 
 HDSSSApplication::HDSSSApplication(int width, int height,
                                    const char* skyBoxPrefix)
-    : Application(width, height, "Deep screen space"),
+    : Application(width, height, "High distance subsurface scattering"),
       m_baseshader{Shader(GBUFFER_VERT, ShaderType::Vertex),
                    Shader(GBUFFER_FRAG, ShaderType::Fragment)},
       m_skyboxshader{Shader(SKYBOX_VERT, ShaderType::Vertex),
@@ -121,8 +122,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
       m_surfelssbo(1, N_SURFELS_MAX * sizeof(SurfelData)),
       m_surfelcounter(0),
       m_globalquad(make_shared<Quad>()),
-      m_finalprocess(getWidth(), getHeight(), m_globalquad),
-      m_hdsss(getWidth(), getHeight()) {
+      m_finalprocess(getWidth(), getHeight(), m_globalquad) {
     ifstream ifs("camera.bin", ios::binary);
     if (!ifs.fail()) {
         ifs.read(reinterpret_cast<char*>(&m_maincam), sizeof(m_maincam));
@@ -219,8 +219,21 @@ void HDSSSApplication::initDeferredPass() {
     m_transmitted_irradiance->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
                                            -1);
     m_transmitted_irradiance->setSizeFilter(GL_LINEAR, GL_LINEAR);
+
+    m_reflected_radiance = make_unique<Texture2D>();
+    m_reflected_radiance->init();
+    m_reflected_radiance->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_reflected_radiance->setSizeFilter(GL_LINEAR, GL_LINEAR);
+
+    m_skyboxresult = make_unique<Texture2D>();
+    m_skyboxresult->init();
+    m_skyboxresult->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_skyboxresult->setSizeFilter(GL_LINEAR, GL_LINEAR);
+
     m_deferredfb.attachTexture(*m_transmitted_irradiance, GL_COLOR_ATTACHMENT0,
                                0);
+    m_deferredfb.attachTexture(*m_reflected_radiance, GL_COLOR_ATTACHMENT1, 0);
+    m_deferredfb.attachTexture(*m_skyboxresult, GL_COLOR_ATTACHMENT2, 0);
     m_deferredfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
     panicPossibleGLError();
 }
@@ -356,15 +369,24 @@ void HDSSSApplication::gui() {
                 ImGui::Checkbox("Parallax mapping", &m_enableparallax);
                 ImGui::Checkbox("Visualize lod", &m_lodvisualize);
             }
-            // Deep screen space option
-            if (ImGui::CollapsingHeader("Deep screen space options",
+
+            if (ImGui::CollapsingHeader("HDSSS options",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
 
                 ImGui::SliderFloat("Splatting strength", &m_splattingstrength,
                                    1.0f, 1e2f, "%.1f",
                                    ImGuiSliderFlags_Logarithmic);
-                ImGui::Checkbox("Apply subsurface scattering", &m_applysss);
+                ImGui::TextWrapped(
+                    "Below fields only effect materials with SSS masks");
+                ImGui::Checkbox("Use diffuse texture",
+                                &m_finalpassoptions.diffuse);
+                ImGui::Checkbox("Use specular texture",
+                                &m_finalpassoptions.specular);
+                ImGui::Checkbox("Use translucency texture",
+                                &m_finalpassoptions.translucency);
+                ImGui::Checkbox("Use SSS texture", &m_finalpassoptions.SSS);
+
                 ImGui::PopItemWidth();
             }
         }
@@ -373,9 +395,9 @@ void HDSSSApplication::gui() {
         float h_img = h * 0.2,
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
-        vector<GLuint> textures{
-            m_gbuffers.albedo->getId(), m_gbuffers.normal->getId(),
-            m_gbuffers.transparentIOR->getId(), m_translucencytex->getId()};
+        vector<GLuint> textures{m_gbuffers.albedo->getId(),
+                                m_gbuffers.normal->getId(),
+                                m_translucencytex->getId()};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -390,10 +412,11 @@ void HDSSSApplication::gui() {
 }
 
 void HDSSSApplication::finalScreenPass() {
-    m_finalprocess.render(
-        *m_transmitted_irradiance,
-        // m_applysss ? *m_hdsss.getSumUpResult() : Texture2D::getBlackTexture(),
-        Texture2D::getBlackTexture(), m_lodvisualize);
+    m_finalpassoptions.directOutput = m_lodvisualize;
+    m_finalprocess.render(*m_transmitted_irradiance, *m_reflected_radiance,
+                          *m_translucencytex, Texture2D::getBlackTexture(),
+                          *m_gbuffers.transparentIOR, *m_skyboxresult,
+                          m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -470,7 +493,8 @@ void HDSSSApplication::deferredPass() {
     // render gbuffer here
 
     m_deferredfb.bind();
-    m_deferredfb.enableAttachments({GL_COLOR_ATTACHMENT0});
+    m_deferredfb.enableAttachments(
+        {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1});
 
     glClearColor(0.f, 0.f, 0.f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -485,7 +509,7 @@ void HDSSSApplication::deferredPass() {
     m_deferredshader.setUniform("mainLightMatrix",
                                 m_lights[0].getLightSpaceMatrix());
 
-    m_deferredshader.setUniform("uCameraPosition", m_maincam.getPosition());
+    m_deferredshader.setUniform("cameraPosition", m_maincam.getPosition());
     {
         m_lightsbuffer.updateData(0, sizeof(ShaderLight) * m_lights.size(),
                                   m_lights.data());
@@ -497,6 +521,9 @@ void HDSSSApplication::deferredPass() {
     glDisable(GL_DEPTH_TEST);
     m_globalquad->draw();
 
+    m_deferredfb.enableAttachments({GL_COLOR_ATTACHMENT2});
+    glClearColor(0.f, 0.f, 0.f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     skyboxPass();
     m_gbufferfb.unbind();
@@ -543,8 +570,11 @@ void HDSSSApplication::splattingPass() {
         m_translucencyshader.setUniform(
             "framebufferDeviceStep.resolution",
             glm::ivec2(getWidth() >> 2, getHeight() >> 2));
+        m_translucencyshader.setUniform("lightSpaceMatrix",
+                                        m_lights[0].getLightSpaceMatrix());
         m_translucencyshader.setTexture(0, *m_gbuffers.position);
         m_translucencyshader.setTexture(1, *m_gbuffers.normal);
+        m_translucencyshader.setTexture(2, *m_mainlightshadowmap);
         glBindVertexArray(m_surfelbuffer.vao);
         glDrawArrays(GL_POINTS, 0, getSurfelCount());
         logPossibleGLError();
@@ -588,7 +618,6 @@ void HDSSSApplication::scene() {
     m_baseshader.setUniform("enableNormal", m_enablenormal);
     m_baseshader.setUniform("enableParallax", m_enableparallax);
     m_baseshader.setUniform("enableLodVisualize", (int)m_lodvisualize);
-    m_baseshader.setUniform("applySSS", m_applysss);
     logPossibleGLError();
 
     m_scene.draw(

@@ -15,10 +15,16 @@ layout(std140, binding = 1) uniform LightBlock {
     int nLights;
 };
 
+layout(binding = 2, location = 10) uniform sampler2D MainLightShadowMap;
+layout(location = 11) uniform mat4 lightSpaceMatrix;
+
 void main() {
     vec3 irradiance = vec3(0.0);
     for (int i = 0; i < nLights; i++) {
-        irradiance += computeSurfaceIrradiance(aPos.xyz, aNormal, lights[i]);
+        float shadow =
+            computeShadow(lightSpaceMatrix, MainLightShadowMap, aPos.xyz);
+        irradiance += (1.0 - shadow) *
+                      computeSurfaceIrradiance(aPos.xyz, aNormal, lights[i]);
     }
     vSurfel = initSurfel(aPos.xyz, aNormal, aRadius, irradiance);
 }

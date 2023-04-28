@@ -15,8 +15,9 @@
 #include <string>
 #include <vector>
 
+#include <loo/AtomicCounter.hpp>
+#include <loo/ShaderStorageBuffer.hpp>
 #include "FinalProcess.hpp"
-#include "HighDistanceSSS.hpp"
 #include "constants.hpp"
 
 class HDSSSApplication : public loo::Application {
@@ -99,7 +100,12 @@ class HDSSSApplication : public loo::Application {
     // deferred pass
     loo::ShaderProgram m_deferredshader;
     loo::Framebuffer m_deferredfb;
+    // diffuse
     std::shared_ptr<loo::Texture2D> m_transmitted_irradiance;
+    // specular
+    std::unique_ptr<loo::Texture2D> m_reflected_radiance;
+    // skybox
+    std::unique_ptr<loo::Texture2D> m_skyboxresult;
     // translucent pass
     loo::ShaderProgram m_translucencyshader;
 
@@ -126,14 +132,12 @@ class HDSSSApplication : public loo::Application {
     // process
     FinalProcess m_finalprocess;
 
-    // Deep screen space
-    HighDistanceSSS m_hdsss;
-
     bool m_wireframe{};
     bool m_enablenormal{true};
     bool m_enableparallax{true};
     bool m_lodvisualize{false};
-    bool m_applysss{false};
+
+    FinalPassOptions m_finalpassoptions;
     // float m_displaceintensity{};
 };
 

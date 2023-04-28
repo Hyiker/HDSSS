@@ -36,9 +36,6 @@ Application::Application(int width, int height, const std::string& title)
     // glEnable(GL_DEPTH_TEST);  // enable depth-testing
     // glDepthFunc(
     //     GL_LESS);  // depth-testing interprets a smaller value as "closer"
-
-    // uncomment to disable vsync
-    // glfwSwapInterval(false);
 }
 
 GLFWwindow* Application::getWindow() const {
@@ -62,6 +59,8 @@ void Application::run() {
 
     // Make the window's context current
     glfwMakeContextCurrent(window);
+    // uncomment to disable vsync
+    glfwSwapInterval(false);
 
     time = glfwGetTime();
 
