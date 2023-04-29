@@ -36,7 +36,8 @@ static shared_ptr<Texture2D> createMaterialTextures(
         return nullptr;
     }
 }
-std::shared_ptr<BaseMaterial> createBaseMaterialFromAssimp(
+
+static BlinnPhongWorkFlow createBlinnPhongWorkFlowFromAssimp(
     const aiMaterial* aMaterial, fs::path objParent) {
     aiColor3D color(0, 0, 0);
     aMaterial->Get(AI_MATKEY_COLOR_AMBIENT, color);
@@ -54,9 +55,45 @@ std::shared_ptr<BaseMaterial> createBaseMaterialFromAssimp(
     float shininess, _ior;
     aMaterial->Get(AI_MATKEY_SHININESS, shininess);
     aMaterial->Get(AI_MATKEY_REFRACTI, _ior);
+    return BlinnPhongWorkFlow(ambient, diffuse, specular, transparent, _ior,
+                              shininess);
+}
 
-    auto material = make_shared<BaseMaterial>(ambient, diffuse, specular,
-                                              transparent, _ior, shininess);
+static MetallicRoughnessWorkFlow createMetallicRoughnessWorkFlowFromAssimp(
+    const aiMaterial* aMaterial, fs::path objParent) {
+    aiColor3D color(0, 0, 0);
+    aMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+    glm::vec3 baseColor = aiColor3D2Glm(color);
+
+    float metallic, roughness;
+    aMaterial->Get(AI_MATKEY_REFLECTIVITY, metallic);
+    aMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
+
+    auto baseColorTex =
+        createMaterialTextures(aMaterial, aiTextureType_BASE_COLOR, objParent);
+    auto occlusionTex = createMaterialTextures(
+        aMaterial, aiTextureType_AMBIENT_OCCLUSION, objParent);
+    auto metallicTex =
+        createMaterialTextures(aMaterial, aiTextureType_METALNESS, objParent);
+    auto roughnessTex = createMaterialTextures(
+        aMaterial, aiTextureType_DIFFUSE_ROUGHNESS, objParent);
+
+    auto workflow = MetallicRoughnessWorkFlow(baseColor, metallic, roughness);
+    workflow.baseColorTex = baseColorTex;
+    workflow.occlusionTex = occlusionTex;
+    workflow.metallicTex = metallicTex;
+    workflow.roughnessTex = roughnessTex;
+    return workflow;
+}
+
+std::shared_ptr<BaseMaterial> createBaseMaterialFromAssimp(
+    const aiMaterial* aMaterial, fs::path objParent) {
+    auto blinnPhong = createBlinnPhongWorkFlowFromAssimp(aMaterial, objParent);
+    auto metallicRoughness =
+        createMetallicRoughnessWorkFlowFromAssimp(aMaterial, objParent);
+    auto material = make_shared<BaseMaterial>(blinnPhong, metallicRoughness);
+
+    // read common textures
     material->ambientTex =
         createMaterialTextures(aMaterial, aiTextureType_AMBIENT, objParent);
 
@@ -77,6 +114,7 @@ std::shared_ptr<BaseMaterial> createBaseMaterialFromAssimp(
         aMaterial, aiTextureType_OPACITY, objParent, TEXTURE_OPTION_MIPMAP);
     material->heightTex = createMaterialTextures(
         aMaterial, aiTextureType_HEIGHT, objParent, TEXTURE_OPTION_MIPMAP);
+
     return material;
 }
 }  // namespace loo

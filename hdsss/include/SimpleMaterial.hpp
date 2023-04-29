@@ -1,11 +1,11 @@
 #ifndef HDSSS_INCLUDE_SIMPLE_MATERIAL_HPP
 #define HDSSS_INCLUDE_SIMPLE_MATERIAL_HPP
 #include <glog/logging.h>
-#include <loo/Material.hpp>
-
 #include <filesystem>
 #include <glm/glm.hpp>
+#include <loo/Material.hpp>
 #include <memory>
+#include "constants.hpp"
 
 #include <assimp/types.h>
 #include <loo/Texture.hpp>
@@ -45,7 +45,7 @@ class SimpleMaterial : public loo::Material {
         if (SimpleMaterial::uniformBuffer == nullptr) {
             SimpleMaterial::uniformBuffer =
                 std::make_unique<loo::UniformBuffer>(
-                    2, sizeof(ShaderSimpleMaterial));
+                    SHADER_BINDING_PORT_SM_PARAM, sizeof(ShaderSimpleMaterial));
         }
     }
     static std::shared_ptr<SimpleMaterial> getDefault();

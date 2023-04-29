@@ -25,7 +25,7 @@ void SimpleMaterial::bind(const ShaderProgram& sp) {
     sp.setTexture(
         SHADER_BINDING_PORT_SM_DISPLACEMENT,
         displacementTex ? *displacementTex : Texture2D::getBlackTexture());
-    sp.setTexture(SHADER_BINDING_PORT_SM_NORMAL,
+    sp.setTexture(SHADER_BINDING_PORT_MATERIAL_NORMAL,
                   normalTex ? *normalTex : Texture2D::getBlackTexture());
     sp.setTexture(SHADER_BINDING_PORT_SM_OPACITY,
                   opacityTex ? *opacityTex : Texture2D::getBlackTexture());
@@ -46,9 +46,10 @@ unique_ptr<UniformBuffer> SimpleMaterial::uniformBuffer = nullptr;
 
 std::shared_ptr<SimpleMaterial> convertSimpleMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial) {
+    const auto& blinnPhong = baseMaterial.bpWorkFlow;
     auto simpleMaterial = std::make_shared<SimpleMaterial>(
-        baseMaterial.ambient, baseMaterial.diffuse, baseMaterial.specular,
-        baseMaterial.transparent, baseMaterial.ior, baseMaterial.shininess);
+        blinnPhong.ambient, blinnPhong.diffuse, blinnPhong.specular,
+        blinnPhong.transparent, blinnPhong.ior, blinnPhong.shininess);
     simpleMaterial->ambientTex = baseMaterial.ambientTex;
     simpleMaterial->diffuseTex = baseMaterial.diffuseTex;
     simpleMaterial->displacementTex = baseMaterial.displacementTex;

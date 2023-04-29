@@ -103,7 +103,8 @@ class Framebuffer {
             CHECK_NE(m_attachments.count(attachment), 0);
         }
 #ifdef OGL_46
-        glNamedFramebufferDrawBuffers(m_fbo, attachments.size(),
+        glNamedFramebufferDrawBuffers(m_fbo,
+                                      static_cast<GLsizei>(attachments.size()),
                                       attachments.data());
 #else
         bind();
