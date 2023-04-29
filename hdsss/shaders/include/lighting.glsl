@@ -17,22 +17,19 @@ struct ShaderLight {
     int type;
 };
 
-struct SurfaceParams {
+struct SurfaceParamsBlinnPhong {
     vec3 normal;
-    vec3 viewDir;
-    vec3 lightDir;
-
     vec4 albedo;
     float shininess;
 };
+
 const int LIGHT_TYPE_SPOT = 0, LIGHT_TYPE_POINT = 1, LIGHT_TYPE_DIRECTIONAL = 2;
 
-void computeBlinnPhongLocalLighting(in SurfaceParams surfaceParams,
-                                    in ShaderLight light, in float intensity,
-                                    out vec3 diffuse, out vec3 specular) {
-    vec3 N = normalize(surfaceParams.normal),
-         V = normalize(surfaceParams.viewDir),
-         L = normalize(surfaceParams.lightDir);
+void computeBlinnPhongLocalLighting(in SurfaceParamsBlinnPhong surfaceParams,
+                                    in ShaderLight light, in vec3 V, in vec3 L,
+                                    in float intensity, out vec3 diffuse,
+                                    out vec3 specular) {
+    vec3 N = surfaceParams.normal;
     vec4 albedo = surfaceParams.albedo;
 
     vec3 H = normalize(V + L);

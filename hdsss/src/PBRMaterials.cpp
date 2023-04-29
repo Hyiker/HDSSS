@@ -31,7 +31,7 @@ void PBRMetallicMaterial::bind(const ShaderProgram& sp) {
 shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefault() {
     if (!defaultMaterial) {
         defaultMaterial =
-            std::make_shared<PBRMetallicMaterial>(vec3(0.5, 0, 0.5), 0.5, 0.5);
+            std::make_shared<PBRMetallicMaterial>(vec3(0.5, 0, 0.5), 0.5, 1);
     }
     return defaultMaterial;
 }

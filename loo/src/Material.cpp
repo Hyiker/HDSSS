@@ -62,11 +62,11 @@ static BlinnPhongWorkFlow createBlinnPhongWorkFlowFromAssimp(
 static MetallicRoughnessWorkFlow createMetallicRoughnessWorkFlowFromAssimp(
     const aiMaterial* aMaterial, fs::path objParent) {
     aiColor3D color(0, 0, 0);
-    aMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color);
+    aMaterial->Get(AI_MATKEY_BASE_COLOR, color);
     glm::vec3 baseColor = aiColor3D2Glm(color);
 
     float metallic, roughness;
-    aMaterial->Get(AI_MATKEY_REFLECTIVITY, metallic);
+    aMaterial->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
     aMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
 
     auto baseColorTex =

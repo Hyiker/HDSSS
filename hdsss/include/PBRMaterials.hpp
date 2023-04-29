@@ -1,7 +1,6 @@
-#ifndef HDSSS_INCLUDE_SIMPLE_MATERIAL_20COPY_HPP
-#define HDSSS_INCLUDE_SIMPLE_MATERIAL_20COPY_HPP
-#ifndef HDSSS_INCLUDE_SIMPLE_MATERIAL_HPP
-#define HDSSS_INCLUDE_SIMPLE_MATERIAL_HPP
+#ifndef HDSSS_INCLUDE_PBRMATERIALS_HPP
+#define HDSSS_INCLUDE_PBRMATERIALS_HPP
+
 #include <glog/logging.h>
 #include <filesystem>
 #include <glm/glm.hpp>
@@ -48,6 +47,5 @@ class PBRMetallicMaterial : public loo::Material {
 };
 std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial);
-#endif /* HDSSS_INCLUDE_SIMPLE_MATERIAL_HPP */
 
-#endif /* HDSSS_INCLUDE_SIMPLE_MATERIAL_20COPY_HPP */
+#endif /* HDSSS_INCLUDE_PBRMATERIALS_HPP */

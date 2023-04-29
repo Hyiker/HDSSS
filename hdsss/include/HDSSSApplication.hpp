@@ -90,10 +90,13 @@ class HDSSSApplication : public loo::Application {
     struct GBuffer {
         std::shared_ptr<loo::Texture2D> position;
         std::shared_ptr<loo::Texture2D> normal;
+        // blinn-phong: diffuse(3) + specular(1)
+        // pbr metallic-roughness: baseColor(3) + metallic(1)
         std::shared_ptr<loo::Texture2D> albedo;
         // using this texture also as SSS mask
         // disable SSS by setting transparent = vec3(0)
         std::shared_ptr<loo::Texture2D> transparentIOR;
+        std::unique_ptr<loo::Texture2D> occlusionRoughness;
         loo::Renderbuffer depthrb;
     } m_gbuffers;
     loo::Framebuffer m_gbufferfb;

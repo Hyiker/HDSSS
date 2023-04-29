@@ -18,12 +18,19 @@ rule("glsl2hpp")
 
         -- glsl to spv
         local outputdir = target:extraconf("rules", "glsl2hpp", "outputdir")
+        local defines = target:extraconf("rules", "glsl2hpp", "defines")
         assert(outputdir, "outputdir not set!")
         local spvfilepath = path.join(outputdir, path.filename(sourcefile_glsl) .. ".spv")
         batchcmds:show_progress(opt.progress, "${color.build.object}generating.glsl2hpp %s", sourcefile_glsl)
         batchcmds:mkdir(outputdir)
-        batchcmds:vrunv(glslc.program, {"-fauto-map-locations", "-fauto-bind-uniforms", "-fauto-combined-image-sampler",
-         "--target-env=opengl", "-o", path(spvfilepath), path(sourcefile_glsl)})
+        local argv = {"-fauto-map-locations", "-fauto-bind-uniforms", "-fauto-combined-image-sampler",
+         "--target-env=opengl", "-o", path(spvfilepath), path(sourcefile_glsl)}
+        if defines then
+            for _, define in ipairs(defines) do
+                table.insert(argv, "-D" .. define)
+            end
+        end
+        batchcmds:vrunv(glslc.program, argv)
 
         -- do bin2c
         local outputfile = spvfilepath:gsub(".spv$", "") .. ".hpp"
@@ -55,7 +62,7 @@ target("HDSSS")
 
     add_includedirs("include")
     set_languages("c11", "cxx20")
-    set_rules("glsl2hpp", {outputdir = "hdsss/include/shaders"})
+    set_rules("glsl2hpp", {outputdir = "hdsss/include/shaders", defines = {"MATERIAL_PBR"}})
     add_files("shaders/*.*", "src/*.cpp")
     
 
@@ -65,5 +72,6 @@ target("HDSSS")
 
 
     -- solve msvc unfriendly to unicode and utf8
-    add_defines( "UNICODE", "_UNICODE")
+    add_defines("UNICODE", "_UNICODE")
+    add_defines("MATERIAL_PBR")
     add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})

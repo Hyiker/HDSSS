@@ -7,6 +7,7 @@
 #include <loo/glError.hpp>
 #include <memory>
 #include <vector>
+#include "PBRMaterials.hpp"
 #include "SimpleMaterial.hpp"
 
 #include "Surfel.hpp"
@@ -185,6 +186,13 @@ void HDSSSApplication::initGBuffers() {
     m_gbuffers.transparentIOR->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
                                             1);
     m_gbuffers.transparentIOR->setSizeFilter(GL_NEAREST, GL_NEAREST);
+
+    m_gbuffers.occlusionRoughness = make_unique<Texture2D>();
+    m_gbuffers.occlusionRoughness->init();
+    m_gbuffers.occlusionRoughness->setupStorage(getWidth(), getHeight(),
+                                                GL_RG16F, 1);
+    m_gbuffers.occlusionRoughness->setSizeFilter(GL_NEAREST, GL_NEAREST);
+
     panicPossibleGLError();
 
     m_gbuffers.depthrb.init(GL_DEPTH_COMPONENT32, getWidth(), getHeight());
@@ -194,6 +202,8 @@ void HDSSSApplication::initGBuffers() {
     m_gbufferfb.attachTexture(*m_gbuffers.albedo, GL_COLOR_ATTACHMENT2, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.transparentIOR, GL_COLOR_ATTACHMENT3,
                               0);
+    m_gbufferfb.attachTexture(*m_gbuffers.occlusionRoughness,
+                              GL_COLOR_ATTACHMENT4, 0);
     m_gbufferfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
 }
 
@@ -420,11 +430,18 @@ void HDSSSApplication::finalScreenPass() {
 }
 
 void HDSSSApplication::convertMaterial() {
-    LOG(INFO) << "Converting material...";
     for (auto& mesh : m_scene.getMeshes()) {
+        // Now default material is PBR material
         if (mesh->material) {
+#ifdef MATERIAL_PBR
+            LOG(INFO) << "Converting material to PBR material";
+            mesh->material = convertPBRMetallicMaterialFromBaseMaterial(
+                *static_pointer_cast<BaseMaterial>(mesh->material));
+#else
+            LOG(INFO) << "Converting material to simple(blinn-phong) material";
             mesh->material = convertSimpleMaterialFromBaseMaterial(
                 *static_pointer_cast<BaseMaterial>(mesh->material));
+#endif
         }
     }
 }
@@ -450,7 +467,8 @@ void HDSSSApplication::gbufferPass() {
     m_gbufferfb.bind();
 
     m_gbufferfb.enableAttachments({GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-                                   GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3});
+                                   GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3,
+                                   GL_COLOR_ATTACHMENT4});
 
     clear();
 
@@ -505,7 +523,8 @@ void HDSSSApplication::deferredPass() {
     m_deferredshader.setTexture(1, *m_gbuffers.normal);
     m_deferredshader.setTexture(2, *m_gbuffers.albedo);
     m_deferredshader.setTexture(3, *m_gbuffers.transparentIOR);
-    m_deferredshader.setTexture(4, *m_mainlightshadowmap);
+    m_deferredshader.setTexture(4, *m_gbuffers.occlusionRoughness);
+    m_deferredshader.setTexture(5, *m_mainlightshadowmap);
     m_deferredshader.setUniform("mainLightMatrix",
                                 m_lights[0].getLightSpaceMatrix());
 

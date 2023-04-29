@@ -14,4 +14,14 @@ float sqr(in float v) {
 float degToRad(float deg) {
     return deg * 0.0174532925;
 }
+vec3 safeNormalize(in vec3 v) {
+    float l = length(v);
+    if (l > 0.0) {
+        return v / l;
+    }
+    return vec3(0.0);
+}
+float clamp01(in float v) {
+    return clamp(v, 0.0, 1.0);
+}
 #endif /* DEEPSCREENSPACE_SHADERS_INCLUDE_MATH_GLSL */

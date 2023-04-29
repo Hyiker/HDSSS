@@ -24,6 +24,7 @@ static unsigned char* readImageFromFile(const std::string& filename, int* width,
         return nullptr;
     }
     // TODO: a more elegant way to read srgb texture
+    // TODO: configurable internal precision
     switch (ncomp) {
         case 1:
             // grey
@@ -56,7 +57,8 @@ static unsigned char* readImageFromFile(const std::string& filename, int* width,
 std::shared_ptr<Texture2D> createTexture2DFromFile(
     std::unordered_map<std::string, std::shared_ptr<Texture2D>>& uniqueTexture,
     const std::string& filename, unsigned int options) {
-    if (uniqueTexture.count(filename)) return uniqueTexture[filename];
+    if (uniqueTexture.count(filename))
+        return uniqueTexture[filename];
     shared_ptr<Texture2D> tex = make_shared<Texture2D>();
     int width, height;
     GLenum imgfmt, internalFmt;
@@ -82,7 +84,8 @@ std::shared_ptr<Texture2D> createTexture2DFromFile(
     panicPossibleGLError();
     tex->setWrapFilter(GL_REPEAT);
     panicPossibleGLError();
-    if (generateMipmap) tex->generateMipmap();
+    if (generateMipmap)
+        tex->generateMipmap();
 
     stbi_image_free(data);
     uniqueTexture[filename] = tex;
