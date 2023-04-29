@@ -479,7 +479,7 @@ void HDSSSApplication::shadowMapPass() {
     m_scene.draw(
         m_shadowmapshader,
         [this](const auto& scene, const auto& mesh) {
-            m_mvp.model = scene.getModelMatrix() * mesh.m_objmat;
+            m_mvp.model = scene.getModelMatrix() * mesh.objectMatrix;
             m_mvpbuffer.updateData(offsetof(MVP, model), sizeof(m_mvp.model),
                                    &m_mvp.model);
         },
@@ -540,7 +540,7 @@ void HDSSSApplication::surfelizePass() {
     m_scene.draw(
         m_surfelizeshader,
         [this](const auto& scene, const auto& mesh) {
-            m_mvp.model = scene.getModelMatrix() * mesh.m_objmat;
+            m_mvp.model = scene.getModelMatrix() * mesh.objectMatrix;
             m_mvpbuffer.updateData(offsetof(MVP, model), sizeof(m_mvp.model),
                                    &m_mvp.model);
         },
@@ -623,7 +623,7 @@ void HDSSSApplication::scene() {
     m_scene.draw(
         m_baseshader,
         [this](const auto& scene, const auto& mesh) {
-            m_mvp.model = scene.getModelMatrix() * mesh.m_objmat;
+            m_mvp.model = scene.getModelMatrix() * mesh.objectMatrix;
             m_mvp.normalMatrix = glm::transpose(glm::inverse(m_mvp.model));
             m_mvpbuffer.updateData(0, sizeof(MVP), &m_mvp);
         },

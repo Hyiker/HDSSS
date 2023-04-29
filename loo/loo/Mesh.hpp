@@ -29,7 +29,7 @@ struct LOO_EXPORT Mesh {
     std::vector<unsigned int> indices;
     std::shared_ptr<Material> material;
     std::string name;
-    glm::mat4 m_objmat;
+    glm::mat4 objectMatrix;
 
     Mesh(std::vector<Vertex>&& vertices, std::vector<unsigned int>&& indicies,
          std::shared_ptr<Material> material, std::string name,
@@ -38,7 +38,7 @@ struct LOO_EXPORT Mesh {
           indices(indicies),
           material(material),
           name(std::move(name)),
-          m_objmat(transform) {}
+          objectMatrix(transform) {}
 
     GLuint vao, vbo, ebo;
     void prepare();
@@ -55,7 +55,7 @@ struct LOO_EXPORT Mesh {
 
 LOO_EXPORT std::vector<std::shared_ptr<Mesh>> createMeshFromFile(
     const std::string& filename,
-    const glm::mat4& basicTransform = glm::identity<glm::mat4>());
+    const glm::mat4& sceneTransform = glm::identity<glm::mat4>());
 
 }  // namespace loo
 
