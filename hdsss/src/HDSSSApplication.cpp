@@ -181,17 +181,20 @@ void HDSSSApplication::initGBuffers() {
     m_gbuffers.albedo->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
     m_gbuffers.albedo->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
-    m_gbuffers.transparentIOR = make_shared<Texture2D>();
-    m_gbuffers.transparentIOR->init();
-    m_gbuffers.transparentIOR->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
-                                            1);
-    m_gbuffers.transparentIOR->setSizeFilter(GL_NEAREST, GL_NEAREST);
+    m_gbuffers.buffer3 = make_shared<Texture2D>();
+    m_gbuffers.buffer3->init();
+    m_gbuffers.buffer3->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_gbuffers.buffer3->setSizeFilter(GL_NEAREST, GL_NEAREST);
 
-    m_gbuffers.occlusionRoughness = make_unique<Texture2D>();
-    m_gbuffers.occlusionRoughness->init();
-    m_gbuffers.occlusionRoughness->setupStorage(getWidth(), getHeight(),
-                                                GL_RG16F, 1);
-    m_gbuffers.occlusionRoughness->setSizeFilter(GL_NEAREST, GL_NEAREST);
+    m_gbuffers.buffer4 = make_unique<Texture2D>();
+    m_gbuffers.buffer4->init();
+    m_gbuffers.buffer4->setupStorage(getWidth(), getHeight(), GL_RGBA16F, 1);
+    m_gbuffers.buffer4->setSizeFilter(GL_NEAREST, GL_NEAREST);
+
+    m_gbuffers.buffer5 = make_unique<Texture2D>();
+    m_gbuffers.buffer5->init();
+    m_gbuffers.buffer5->setupStorage(getWidth(), getHeight(), GL_RGBA16F, 1);
+    m_gbuffers.buffer5->setSizeFilter(GL_NEAREST, GL_NEAREST);
 
     panicPossibleGLError();
 
@@ -200,10 +203,9 @@ void HDSSSApplication::initGBuffers() {
     m_gbufferfb.attachTexture(*m_gbuffers.position, GL_COLOR_ATTACHMENT0, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.normal, GL_COLOR_ATTACHMENT1, 0);
     m_gbufferfb.attachTexture(*m_gbuffers.albedo, GL_COLOR_ATTACHMENT2, 0);
-    m_gbufferfb.attachTexture(*m_gbuffers.transparentIOR, GL_COLOR_ATTACHMENT3,
-                              0);
-    m_gbufferfb.attachTexture(*m_gbuffers.occlusionRoughness,
-                              GL_COLOR_ATTACHMENT4, 0);
+    m_gbufferfb.attachTexture(*m_gbuffers.buffer3, GL_COLOR_ATTACHMENT3, 0);
+    m_gbufferfb.attachTexture(*m_gbuffers.buffer4, GL_COLOR_ATTACHMENT4, 0);
+    m_gbufferfb.attachTexture(*m_gbuffers.buffer5, GL_COLOR_ATTACHMENT5, 0);
     m_gbufferfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
 }
 
@@ -287,6 +289,14 @@ void HDSSSApplication::initSurfelizePass() {
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
                           (GLvoid*)(offsetof(SurfelData, radius)));
     glEnableVertexAttribArray(2);
+
+    // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+    //                       (GLvoid*)(offsetof(SurfelData, sigma_t)));
+    // glEnableVertexAttribArray(3);
+
+    // glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+    //                       (GLvoid*)(offsetof(SurfelData, sigma_a)));
+    // glEnableVertexAttribArray(4);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -425,7 +435,7 @@ void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
     m_finalprocess.render(*m_transmitted_irradiance, *m_reflected_radiance,
                           *m_translucencytex, Texture2D::getBlackTexture(),
-                          *m_gbuffers.transparentIOR, *m_skyboxresult,
+                          *m_gbuffers.buffer3, *m_skyboxresult,
                           m_finalpassoptions);
 }
 
@@ -522,9 +532,10 @@ void HDSSSApplication::deferredPass() {
     m_deferredshader.setTexture(0, *m_gbuffers.position);
     m_deferredshader.setTexture(1, *m_gbuffers.normal);
     m_deferredshader.setTexture(2, *m_gbuffers.albedo);
-    m_deferredshader.setTexture(3, *m_gbuffers.transparentIOR);
-    m_deferredshader.setTexture(4, *m_gbuffers.occlusionRoughness);
-    m_deferredshader.setTexture(5, *m_mainlightshadowmap);
+    m_deferredshader.setTexture(3, *m_gbuffers.buffer3);
+    m_deferredshader.setTexture(4, *m_gbuffers.buffer4);
+    m_deferredshader.setTexture(5, *m_gbuffers.buffer5);
+    m_deferredshader.setTexture(6, *m_mainlightshadowmap);
     m_deferredshader.setUniform("mainLightMatrix",
                                 m_lights[0].getLightSpaceMatrix());
 

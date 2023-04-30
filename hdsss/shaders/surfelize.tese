@@ -17,7 +17,15 @@ layout(binding = 0) uniform atomic_uint surfelCounter;
 layout(std430, binding = 1) buffer surfelSSBO {
     SurfelData surfels[];
 };
-
+#ifdef MATERIAL_PBR
+layout(std140, binding = 3) uniform PBRMetallicMaterial {
+    vec4 baseColorMetallic;
+    // transmission(1) + sigmaT(3)
+    vec4 transmissionSigmaT;
+    // sigmaA(3) + roughness(1)
+    vec4 sigmaARoughness;
+};
+#endif
 float computeRandomOffset(vec3 pos) {
     float a = sin(pos.x) * 1203.f;
     float b = sin(pos.y + 0.123f) * 321.f;
@@ -56,5 +64,14 @@ void main() {
     if (index >= N_SURFELS_MAX) {
         return;
     }
-    surfels[index] = SurfelData(vec4(position, 0), normal, radius);
+    surfels[index] = SurfelData(
+        vec4(position, 0), normal, radius
+        //         ,
+        // #ifdef MATERIAL_PBR
+        //                    transmissionSigmaT.gba, 0.0, sigmaARoughness.rgb, 0.0
+        // #else
+        //                    vec3(0.0021, 0.0041, 0.0071), 0.0, vec3(2.19, 4.62, 2.00),
+        //                    0.0
+        // #endif
+    );
 }

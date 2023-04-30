@@ -27,7 +27,7 @@ class FinalProcess {
                 const loo::Texture2D& specularTexture,
                 const loo::Texture2D& translucencyTexture,
                 const loo::Texture2D& sssTexture,
-                const loo::Texture2D& transparentIORTexture,
+                const loo::Texture2D& GBuffer3,
                 const loo::Texture2D& skyboxTexture,
                 const FinalPassOptions& options);
 };

@@ -6,9 +6,10 @@
 layout(binding = 0) uniform sampler2D GBufferPosition;
 layout(binding = 1) uniform sampler2D GBufferNormal;
 layout(binding = 2) uniform sampler2D GBufferAlbedo;
-layout(binding = 3) uniform sampler2D GBufferTransparentIOR;
-layout(binding = 4) uniform sampler2D GBufferOcclusionRoughness;
-layout(binding = 5) uniform sampler2D MainLightShadowMap;
+layout(binding = 3) uniform sampler2D GBuffer3;
+layout(binding = 4) uniform sampler2D GBuffer4;
+layout(binding = 5) uniform sampler2D GBuffer5;
+layout(binding = 6) uniform sampler2D MainLightShadowMap;
 
 uniform mat4 mainLightMatrix;
 uniform vec3 cameraPosition;
@@ -34,9 +35,9 @@ void main() {
     positionWS = texture(GBufferPosition, texCoord).xyz;
     normalWS = texture(GBufferNormal, texCoord).xyz;
     albedo = texture(GBufferAlbedo, texCoord).rgba;
-    transparent = texture(GBufferTransparentIOR, texCoord).rgb;
-    ior = texture(GBufferTransparentIOR, texCoord).a;
-    vec2 occlusionRoughness = texture(GBufferOcclusionRoughness, texCoord).rg;
+    transparent = texture(GBuffer3, texCoord).rgb;
+    ior = texture(GBuffer3, texCoord).a;
+    vec2 occlusionRoughness = texture(GBuffer4, texCoord).rg;
     occlusion = occlusionRoughness.r;
     roughness = occlusionRoughness.g;
 

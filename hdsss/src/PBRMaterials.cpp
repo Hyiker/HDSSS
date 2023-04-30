@@ -30,8 +30,8 @@ void PBRMetallicMaterial::bind(const ShaderProgram& sp) {
 
 shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefault() {
     if (!defaultMaterial) {
-        defaultMaterial =
-            std::make_shared<PBRMetallicMaterial>(vec3(0.5, 0, 0.5), 0.5, 1);
+        defaultMaterial = std::make_shared<PBRMetallicMaterial>(
+            vec3(0.5, 0, 0.5), 0.5, 0, vec3(0), vec3(1.0), 1);
     }
     return defaultMaterial;
 }
@@ -42,7 +42,8 @@ std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial) {
     const auto& pbrMetallic = baseMaterial.mrWorkFlow;
     auto metallicMaterial = std::make_shared<PBRMetallicMaterial>(
-        pbrMetallic.baseColor, pbrMetallic.metallic, pbrMetallic.roughness);
+        pbrMetallic.baseColor, pbrMetallic.metallic, pbrMetallic.transmission,
+        pbrMetallic.sigma_t, pbrMetallic.sigma_a, pbrMetallic.roughness);
     metallicMaterial->baseColorTex = pbrMetallic.baseColorTex;
     metallicMaterial->normalTex = baseMaterial.normalTex;
     metallicMaterial->metallicTex = pbrMetallic.metallicTex;

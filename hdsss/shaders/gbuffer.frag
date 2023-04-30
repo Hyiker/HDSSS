@@ -11,8 +11,9 @@ layout(location = 4) in vec3 vBitangent;
 layout(location = 0) out vec4 FragPosition;
 layout(location = 1) out vec3 FragNormal;
 layout(location = 2) out vec4 FragAlbedo;
-layout(location = 3) out vec4 FragTransparentIOR;
-layout(location = 4) out vec2 OcclusionRoughness;
+layout(location = 3) out vec4 GBuffer3;
+layout(location = 4) out vec4 GBuffer4;
+layout(location = 5) out vec4 GBuffer5;
 
 uniform vec3 uCameraPosition;
 
@@ -25,7 +26,10 @@ const float ambientIntensity = 0.01f;
 #ifdef MATERIAL_PBR
 layout(std140, binding = 3) uniform PBRMetallicMaterial {
     vec4 baseColorMetallic;
-    float roughness;
+    // transmission(1) + sigmaT(3)
+    vec4 transmissionSigmaT;
+    // sigmaA(3) + roughness(1)
+    vec4 sigmaARoughness;
 }
 simpleMaterial;
 layout(binding = 10) uniform sampler2D baseColorTex;
@@ -33,18 +37,22 @@ layout(binding = 11) uniform sampler2D occlusionTex;
 layout(binding = 12) uniform sampler2D metallicTex;
 layout(binding = 13) uniform sampler2D roughnessTex;
 
-void GBufferFromSimpleMaterial(in vec2 texCoord, in sampler2D baseColorTex,
-                               in sampler2D occlusionTex,
-                               in sampler2D metallicTex,
-                               in sampler2D roughnessTex, in vec3 baseColor,
-                               in float metallic, in float roughness,
-                               out vec4 GBufferAlbedo,
-                               out vec2 GBufferOcclusionRoughness) {
+void GBufferFromSimpleMaterial(
+    in vec2 texCoord, in sampler2D baseColorTex, in sampler2D occlusionTex,
+    in sampler2D metallicTex, in sampler2D roughnessTex, in vec3 baseColor,
+    in float metallic, in float transmission, in vec3 sigmaT, in vec3 sigmaA,
+    in float roughness, out vec4 GBufferAlbedo,
+    out vec4 GBufferTransmissionSigmaT, out vec4 GBufferSigmaARoughness,
+    out vec4 GBufferOcclusion) {
     GBufferAlbedo.rgb = texture(baseColorTex, texCoord).rgb * baseColor;
     GBufferAlbedo.a = texture(metallicTex, texCoord).r * metallic;
-    GBufferOcclusionRoughness.r =
-        texture(roughnessTex, texCoord).r * roughness;  // roughness
-    GBufferOcclusionRoughness.g = texture(occlusionTex, texCoord).r;
+    GBufferTransmissionSigmaT.r = transmission;
+    GBufferTransmissionSigmaT.gba = sigmaT;
+    GBufferSigmaARoughness.rgb = sigmaA;
+    GBufferTransmissionSigmaT.gba = vec3(0.0021, 0.0041, 0.0071);
+    GBufferSigmaARoughness.rgb = vec3(2.19, 4.62, 2.00);
+    GBufferSigmaARoughness.a = roughness;
+    GBufferOcclusion.r = texture(occlusionTex, texCoord).r;
 }
 #else
 layout(std140, binding = 2) uniform SimpleMaterial {
@@ -128,12 +136,14 @@ void main() {
     GBufferFromSimpleMaterial(
         texCoord, baseColorTex, occlusionTex, metallicTex, roughnessTex,
         simpleMaterial.baseColorMetallic.rgb,
-        simpleMaterial.baseColorMetallic.a, simpleMaterial.roughness,
-        FragAlbedo, OcclusionRoughness);
+        simpleMaterial.baseColorMetallic.a, simpleMaterial.transmissionSigmaT.r,
+        simpleMaterial.transmissionSigmaT.gba,
+        simpleMaterial.sigmaARoughness.rgb, simpleMaterial.sigmaARoughness.a,
+        FragAlbedo, GBuffer3, GBuffer4, GBuffer5);
 #else
     GBufferFromSimpleMaterial(
         texCoord, diffuseTex, specularTex, simpleMaterial.diffuse.rgb,
         simpleMaterial.specular.rgb, simpleMaterial.transparentIOR, FragAlbedo,
-        FragTransparentIOR);
+        GBuffer3);
 #endif
 }

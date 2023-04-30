@@ -93,10 +93,15 @@ class HDSSSApplication : public loo::Application {
         // blinn-phong: diffuse(3) + specular(1)
         // pbr metallic-roughness: baseColor(3) + metallic(1)
         std::shared_ptr<loo::Texture2D> albedo;
-        // using this texture also as SSS mask
-        // disable SSS by setting transparent = vec3(0)
-        std::shared_ptr<loo::Texture2D> transparentIOR;
-        std::unique_ptr<loo::Texture2D> occlusionRoughness;
+        // simple material: transparent(3)(sss mask) + IOR(1)
+        // pbr: transmission(1)(sss mask) + sigma_t(3)
+        std::shared_ptr<loo::Texture2D> buffer3;
+        // simple material: unused
+        // pbr: sigma_a(3) + roughness(1)
+        std::unique_ptr<loo::Texture2D> buffer4;
+        // simple material: unused
+        // pbr: occlusion(1) + unused(3)
+        std::unique_ptr<loo::Texture2D> buffer5;
         loo::Renderbuffer depthrb;
     } m_gbuffers;
     loo::Framebuffer m_gbufferfb;

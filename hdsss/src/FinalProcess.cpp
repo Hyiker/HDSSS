@@ -23,7 +23,7 @@ void FinalProcess::render(const loo::Texture2D& diffuseTexture,
                           const loo::Texture2D& specularTexture,
                           const loo::Texture2D& translucencyTexture,
                           const loo::Texture2D& sssTexture,
-                          const loo::Texture2D& transparentIORTexture,
+                          const loo::Texture2D& GBuffer3,
                           const loo::Texture2D& skyboxTexture,
                           const FinalPassOptions& options) {
     Framebuffer::bindDefault();
@@ -43,7 +43,7 @@ void FinalProcess::render(const loo::Texture2D& diffuseTexture,
     m_shader.setTexture(2, translucencyTexture);
     m_shader.setTexture(3, sssTexture);
     m_shader.setTexture(4, skyboxTexture);
-    m_shader.setTexture(5, transparentIORTexture);
+    m_shader.setTexture(5, GBuffer3);
 
     m_quad->draw();
 

@@ -8,7 +8,7 @@ layout(binding = 1) uniform sampler2D specularTexture;
 layout(binding = 2) uniform sampler2D translucencyTexture;
 layout(binding = 3) uniform sampler2D sssTexture;
 layout(binding = 4) uniform sampler2D skyboxTexture;
-layout(binding = 5) uniform sampler2D transparentIORTexture;
+layout(binding = 5) uniform sampler2D GBuffer3;
 
 uniform bool directOutput;
 uniform bool enableDiffuse;
@@ -27,8 +27,11 @@ void main() {
     vec3 translucency = texture(translucencyTexture, texCoord).rgb;
     vec3 sss = texture(sssTexture, texCoord).rgb;
     vec3 skyboxTexture = texture(skyboxTexture, texCoord).rgb;
-    vec3 transparent = texture(transparentIORTexture, texCoord).rgb;
-    bool sssEnabled = length(sss) > 0.0;
+#ifdef MATERIAL_PBR
+    bool sssEnabled = length(texture(GBuffer3, texCoord).r) != 0.0;
+#else
+    bool sssEnabled = length(texture(GBuffer3, texCoord).rgb) > 0.0;
+#endif
     vec3 color = vec3(0.0);
     if (sssEnabled) {
         if (enableDiffuse) {

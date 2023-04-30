@@ -43,9 +43,22 @@ struct MetallicRoughnessWorkFlow {
     float metallic;
     float roughness;
 
+    // transmission factor
+    float transmission;
+    // sigma_t = 1 / mfp
+    glm::vec3 sigma_t;
+    // sigma_a
+    glm::vec3 sigma_a;
+
     MetallicRoughnessWorkFlow() = default;
-    MetallicRoughnessWorkFlow(glm::vec3 bc, float m, float r)
-        : baseColor(bc), metallic(m), roughness(r) {}
+    MetallicRoughnessWorkFlow(glm::vec3 bc, float m, float r, float t,
+                              glm::vec3 st, glm::vec3 sa)
+        : baseColor(bc),
+          metallic(m),
+          roughness(r),
+          transmission(t),
+          sigma_t(st),
+          sigma_a(sa) {}
 
     std::shared_ptr<loo::Texture2D> baseColorTex{};
     std::shared_ptr<loo::Texture2D> occlusionTex{};

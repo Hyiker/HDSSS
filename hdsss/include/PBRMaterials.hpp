@@ -16,10 +16,16 @@ struct ShaderPBRMetallicMaterial {
     // std140 pad vec3 to 4N(N = 4B)
     // using vec4 to save your day
     glm::vec4 baseColorMetallic;
-    float roughness;
+    // transmission(1) + sigmaT(3)
+    glm::vec4 transmissionSigmaT;
+    // sigmaA(3) + roughness(1)
+    glm::vec4 sigmaARoughness;
     ShaderPBRMetallicMaterial(glm::vec3 baseColor, float metallic,
-                              float roughness)
-        : baseColorMetallic(baseColor, metallic), roughness(roughness) {}
+                              float transmission, glm::vec3 sigmaT,
+                              glm::vec3 sigmaA, float roughness)
+        : baseColorMetallic(baseColor, metallic),
+          transmissionSigmaT(transmission, sigmaT),
+          sigmaARoughness(sigmaA, roughness) {}
 };
 class PBRMetallicMaterial : public loo::Material {
     ShaderPBRMetallicMaterial m_shadermaterial;
@@ -29,8 +35,10 @@ class PBRMetallicMaterial : public loo::Material {
 
    public:
     ShaderPBRMetallicMaterial& getShaderMaterial() { return m_shadermaterial; }
-    PBRMetallicMaterial(glm::vec3 baseColor, float metallic, float roughness)
-        : m_shadermaterial(baseColor, metallic, roughness) {
+    PBRMetallicMaterial(glm::vec3 baseColor, float metallic, float transmission,
+                        glm::vec3 sigmaT, glm::vec3 sigmaA, float roughness)
+        : m_shadermaterial(baseColor, metallic, transmission, sigmaT, sigmaA,
+                           roughness) {
         if (PBRMetallicMaterial::uniformBuffer == nullptr) {
             PBRMetallicMaterial::uniformBuffer =
                 std::make_unique<loo::UniformBuffer>(

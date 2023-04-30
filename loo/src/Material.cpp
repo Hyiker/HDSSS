@@ -8,7 +8,9 @@
 #include <assimp/material.h>
 #include <assimp/types.h>
 #include <glm/fwd.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <loo/Shader.hpp>
+
 namespace loo {
 
 using namespace std;
@@ -51,7 +53,6 @@ static BlinnPhongWorkFlow createBlinnPhongWorkFlowFromAssimp(
     // a hack for wavefront obj
     aMaterial->Get(AI_MATKEY_COLOR_EMISSIVE, color);
     glm::vec3 transparent = aiColor3D2Glm(color);
-
     float shininess, _ior;
     aMaterial->Get(AI_MATKEY_SHININESS, shininess);
     aMaterial->Get(AI_MATKEY_REFRACTI, _ior);
@@ -69,6 +70,13 @@ static MetallicRoughnessWorkFlow createMetallicRoughnessWorkFlowFromAssimp(
     aMaterial->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
     aMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
 
+    // TODO: AI_MATKEY_TRANSMISSION_FACTOR, AI_MATKEY_VOLUME_ATTENUATION_COLOR
+    float transmission = 0.0, mfp = 0.0;
+    aMaterial->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission);
+    aMaterial->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, color);
+    glm::vec3 sigma_a = aiColor3D2Glm(color);
+    aMaterial->Get(AI_MATKEY_VOLUME_ATTENUATION_DISTANCE, mfp);
+
     auto baseColorTex =
         createMaterialTextures(aMaterial, aiTextureType_BASE_COLOR, objParent);
     auto occlusionTex = createMaterialTextures(
@@ -78,7 +86,9 @@ static MetallicRoughnessWorkFlow createMetallicRoughnessWorkFlowFromAssimp(
     auto roughnessTex = createMaterialTextures(
         aMaterial, aiTextureType_DIFFUSE_ROUGHNESS, objParent);
 
-    auto workflow = MetallicRoughnessWorkFlow(baseColor, metallic, roughness);
+    auto workflow =
+        MetallicRoughnessWorkFlow(baseColor, metallic, roughness, transmission,
+                                  glm::vec3(1 / mfp), sigma_a);
     workflow.baseColorTex = baseColorTex;
     workflow.occlusionTex = occlusionTex;
     workflow.metallicTex = metallicTex;

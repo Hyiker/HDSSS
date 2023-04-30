@@ -15,6 +15,15 @@ layout(location = 1) out vec3 tcNormal[];    // Vertex normals in model space
 layout(location = 2) patch out float tcRadius;  // Radius
 // patch out int tcMaterialId;
 
+#ifdef MATERIAL_PBR
+layout(std140, binding = 3) uniform PBRMetallicMaterial {
+    vec4 baseColorMetallic;
+    // transmission(1) + sigmaT(3)
+    vec4 transmissionSigmaT;
+    // sigmaA(3) + roughness(1)
+    vec4 sigmaARoughness;
+};
+#else
 layout(std140, binding = 2) uniform SimpleMaterial {
     vec4 ambient;
     vec4 diffuse;
@@ -23,6 +32,7 @@ layout(std140, binding = 2) uniform SimpleMaterial {
     vec4 transparentIOR;
     float shininess;
 };
+#endif
 
 float tessLevelFromRadius(in float radius, in float area) {
     return ceil(sqrt(12 * PI * area - 3 * PI_SQR * radius * radius) /
@@ -44,7 +54,13 @@ float radiusFromTessLevel(in float tessLevel, in float area) {
 }
 
 void main() {
-    if (length(transparentIOR.rgb) == 0) {
+    if (
+#ifdef MATERIAL_PBR
+        transmissionSigmaT.r == 0
+#else
+        length(transparentIOR.rgb) == 0
+#endif
+    ) {
         // remove patches without subsurface effect
         setTessellationLevels(0);
         return;
