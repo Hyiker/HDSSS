@@ -115,13 +115,13 @@ HDSSSApplication::HDSSSApplication(int width, int height,
       m_translucencyshader{Shader(TRANSLUCENCY_VERT, ShaderType::Vertex),
                            Shader(TRANSLUCENCY_GEOM, ShaderType::Geometry),
                            Shader(TRANSLUCENCY_FRAG, ShaderType::Fragment)},
-      m_surfelizeshader{
-          Shader(SURFELIZE_VERT, ShaderType::Vertex),
-          Shader(SURFELIZE_TESC, ShaderType::TessellationControl),
-          Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
-      },
-      m_surfelssbo(1, N_SURFELS_MAX * sizeof(SurfelData)),
-      m_surfelcounter(0),
+      m_surfelizeshader(
+          {
+              Shader(SURFELIZE_VERT, ShaderType::Vertex),
+              Shader(SURFELIZE_TESC, ShaderType::TessellationControl),
+              Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
+          },
+          {"tePos", "teNormal", "teRadius"}),
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad) {
     ifstream ifs("camera.bin", ios::binary);
@@ -270,13 +270,14 @@ void HDSSSApplication::initTranslucencyPass() {
 void HDSSSApplication::initSurfelizePass() {
     GLuint vao, vbo;
     glGenVertexArrays(1, &vao);
+    glGenTransformFeedbacks(1, &m_surfelizetf);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferStorage(GL_ARRAY_BUFFER, sizeof(SurfelData) * N_SURFELS_MAX,
-                    nullptr, GL_DYNAMIC_STORAGE_BIT);
-    SurfelData sd{};
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(SurfelData), &sd);
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_surfelizetf);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(SurfelData) * N_SURFELS_MAX, nullptr,
+                 GL_DYNAMIC_DRAW);
+    panicPossibleGLError();
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
                           (GLvoid*)offsetof(SurfelData, position));
@@ -289,6 +290,7 @@ void HDSSSApplication::initSurfelizePass() {
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
                           (GLvoid*)(offsetof(SurfelData, radius)));
     glEnableVertexAttribArray(2);
+    panicPossibleGLError();
 
     // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
     //                       (GLvoid*)(offsetof(SurfelData, sigma_t)));
@@ -297,13 +299,15 @@ void HDSSSApplication::initSurfelizePass() {
     // glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
     //                       (GLvoid*)(offsetof(SurfelData, sigma_a)));
     // glEnableVertexAttribArray(4);
-
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbo);
+    panicPossibleGLError();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
     m_surfelbuffer.vao = vao;
     m_surfelbuffer.vbo = vbo;
     panicPossibleGLError();
+    glGenQueries(1, &m_surfelizequery);
 }
 
 void HDSSSApplication::gui() {
@@ -352,7 +356,7 @@ void HDSSSApplication::gui() {
             if (ImGui::CollapsingHeader("High distance SSS info",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 string postfix = "";
-                int nSurfel = m_surfelcounter.getCounter();
+                int nSurfel = getSurfelCount();
                 if (nSurfel > 1000) {
                     nSurfel /= 1000;
                     postfix = "k";
@@ -560,13 +564,16 @@ void HDSSSApplication::deferredPass() {
 }
 
 void HDSSSApplication::surfelizePass() {
-    logPossibleGLError();
     m_translucencyfb.bind();
+    glBeginQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, m_surfelizequery);
+    logPossibleGLError();
+    glEnable(GL_RASTERIZER_DISCARD);
 
     m_surfelizeshader.use();
 
     glPatchParameteri(GL_PATCH_VERTICES, 3);
-    m_surfelcounter.resetCounter();
+    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_surfelizetf);
+    glBeginTransformFeedback(GL_POINTS);
     m_scene.draw(
         m_surfelizeshader,
         [this](const auto& scene, const auto& mesh) {
@@ -575,8 +582,14 @@ void HDSSSApplication::surfelizePass() {
                                    &m_mvp.model);
         },
         GL_FILL, DRAW_FLAG_TESSELLATION);
-
+    glEndTransformFeedback();
+    glFlush();
+    glEndQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
+    glGetQueryObjectuiv(m_surfelizequery, GL_QUERY_RESULT,
+                        (GLuint*)&m_surfelcount);
+    glDisable(GL_RASTERIZER_DISCARD);
     m_translucencyfb.unbind();
+    panicPossibleGLError();
 }
 
 void HDSSSApplication::splattingPass() {
@@ -621,9 +634,6 @@ void HDSSSApplication::translucencyPass() {
     // m_gbuffers.normal->generateMipmap();
     // m_transmitted_irradiance->generateMipmap();
 
-    // copy surfel ssbo to vbo
-    glCopyNamedBufferSubData(m_surfelssbo.getId(), m_surfelbuffer.vbo, 0, 0,
-                             m_surfelssbo.getSize());
     panicPossibleGLError();
 
     splattingPass();

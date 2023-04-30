@@ -118,11 +118,11 @@ class HDSSSApplication : public loo::Application {
     loo::ShaderProgram m_translucencyshader;
 
     loo::ShaderProgram m_surfelizeshader;
-    loo::ShaderStorageBuffer m_surfelssbo;
-    loo::AtomicCounter m_surfelcounter;
-    int getSurfelCount() const {
-        return std::min((int)m_surfelcounter.getCounter(), N_SURFELS_MAX);
-    }
+    int m_surfelcount{0};
+
+    int getSurfelCount() const { return m_surfelcount; }
+
+    GLuint m_surfelizetf, m_surfelizequery;
     struct SurfelBuffer {
         GLuint vao;
         GLuint vbo;

@@ -9,11 +9,10 @@
 // Per-fragment computations
 ////////////////////////////
 
-layout(invocations = 4) in;
 layout(points) in;
 layout(points, max_vertices = 1) out;
 
-flat in Surfel vertexSurfel[];
+layout(location = 0) flat in Surfel vertexSurfel[];
 
 flat out Surfel geometrySurfel;
 flat out float geometryInnerRadius;

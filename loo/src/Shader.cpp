@@ -97,10 +97,13 @@ void Shader::checkCompileStatus() const {
     }
 }
 
-GLuint Shader::getHandle() const { return handle; }
+GLuint Shader::getHandle() const {
+    return handle;
+}
 
 Shader::~Shader() {
-    if (handle != GL_INVALID_INDEX) glDeleteShader(handle);
+    if (handle != GL_INVALID_INDEX)
+        glDeleteShader(handle);
 }
 
 Shader createShaderFromFile(const std::string& filename, GLenum type) {
@@ -124,10 +127,26 @@ ShaderProgram::ShaderProgram() {
 
 ShaderProgram::ShaderProgram(std::initializer_list<Shader> shaderList)
     : ShaderProgram() {
-    for (auto& s : shaderList) glAttachShader(handle, s.getHandle());
+    for (auto& s : shaderList)
+        glAttachShader(handle, s.getHandle());
 
     link();
-    for (auto& s : shaderList) glDetachShader(handle, s.getHandle());
+    for (auto& s : shaderList)
+        glDetachShader(handle, s.getHandle());
+}
+
+ShaderProgram::ShaderProgram(
+    std::initializer_list<Shader> shaderList,
+    const std::vector<const char*>& transformFeedbackVaryings)
+    : ShaderProgram() {
+    for (auto& s : shaderList)
+        glAttachShader(handle, s.getHandle());
+    glTransformFeedbackVaryings(handle, transformFeedbackVaryings.size(),
+                                transformFeedbackVaryings.data(),
+                                GL_INTERLEAVED_ATTRIBS);
+    link();
+    for (auto& s : shaderList)
+        glDetachShader(handle, s.getHandle());
 }
 
 ShaderProgram::ShaderProgram(ShaderProgram&& other)
@@ -150,7 +169,7 @@ void ShaderProgram::link() {
         char* log = new char[logsize];
         glGetProgramInfoLog(handle, logsize, &logsize, log);
 
-        LOG(ERROR) << log << endl;
+        LOG(FATAL) << log << endl;
     }
 }
 
@@ -262,11 +281,19 @@ void ShaderProgram::setTexture(const std::string& name, int index, int texId,
     glActiveTexture(GL_TEXTURE0);
 }
 
-ShaderProgram::~ShaderProgram() { glDeleteProgram(handle); }
+ShaderProgram::~ShaderProgram() {
+    glDeleteProgram(handle);
+}
 
-void ShaderProgram::use() const { glUseProgram(handle); }
-void ShaderProgram::unuse() const { glUseProgram(0); }
+void ShaderProgram::use() const {
+    glUseProgram(handle);
+}
+void ShaderProgram::unuse() const {
+    glUseProgram(0);
+}
 
-GLuint ShaderProgram::getHandle() const { return handle; }
+GLuint ShaderProgram::getHandle() const {
+    return handle;
+}
 
 }  // namespace loo

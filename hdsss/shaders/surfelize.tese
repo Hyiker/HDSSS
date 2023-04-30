@@ -14,9 +14,11 @@ layout(location = 1) in vec3 tcNormal[];    // Vertex normals in model space
 layout(location = 2) patch in float tcRadius;  // Radius
 
 layout(binding = 0) uniform atomic_uint surfelCounter;
-layout(std430, binding = 1) buffer surfelSSBO {
-    SurfelData surfels[];
-};
+
+layout(location = 0) out vec4 tePos;
+layout(location = 1) out vec3 teNormal;
+layout(location = 2) out float teRadius;
+
 #ifdef MATERIAL_PBR
 layout(std140, binding = 3) uniform PBRMetallicMaterial {
     vec4 baseColorMetallic;
@@ -59,19 +61,9 @@ void main() {
          (2.0 * computeRandomOffset(position + tcPosition[2]) - 1.0) * t1);
 
     float radius = tcRadius;
-    // teMaterialId = tcMaterialId;
-    uint index = atomicCounterIncrement(surfelCounter);
-    if (index >= N_SURFELS_MAX) {
-        return;
-    }
-    surfels[index] = SurfelData(
-        vec4(position, 0), normal, radius
-        //         ,
-        // #ifdef MATERIAL_PBR
-        //                    transmissionSigmaT.gba, 0.0, sigmaARoughness.rgb, 0.0
-        // #else
-        //                    vec3(0.0021, 0.0041, 0.0071), 0.0, vec3(2.19, 4.62, 2.00),
-        //                    0.0
-        // #endif
-    );
+    atomicCounterIncrement(surfelCounter);
+
+    tePos = vec4(position, 1.0);
+    teNormal = normal;
+    teRadius = radius;
 }

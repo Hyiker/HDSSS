@@ -73,6 +73,8 @@ class LOO_EXPORT ShaderProgram {
    public:
     // constructor
     ShaderProgram(std::initializer_list<Shader> shaderList);
+    ShaderProgram(std::initializer_list<Shader> shaderList,
+                  const std::vector<const char*>& transformFeedbackVaryings);
     ShaderProgram(ShaderProgram&) = delete;
     ShaderProgram(ShaderProgram&& other);
 
