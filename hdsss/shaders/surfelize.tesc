@@ -13,6 +13,8 @@ layout(location = 1) in vec3 vNormal[];    // Vertex normal in model space
 layout(location = 0) out vec3 tcPosition[];  // Vertex positions in world space
 layout(location = 1) out vec3 tcNormal[];    // Vertex normals in model space
 layout(location = 2) patch out float tcRadius;  // Radius
+layout(location = 3) patch out vec3 tcSigmaT;   // sigma_t
+layout(location = 4) patch out vec3 tcSigmaA;   // sigma_a
 // patch out int tcMaterialId;
 
 #ifdef MATERIAL_PBR
@@ -91,5 +93,12 @@ void main() {
         vPosition[gl_InvocationID] +
         actualRadius * normalize(center - vPosition[gl_InvocationID]);
     tcNormal[gl_InvocationID] = vNormal[gl_InvocationID];
+#ifdef MATERIAL_PBR
+    tcSigmaT = transmissionSigmaT.gba;
+    tcSigmaA = vec3(1.0) - sigmaARoughness.rgb;
+#else
+    tcSigmaT = vec3(2.19, 4.62, 2.00);
+    tcSigmaA = vec3(0.0021, 0.0041, 0.0071);
+#endif
     // tcMaterialId = vMaterialId[gl_InvocationID];
 }

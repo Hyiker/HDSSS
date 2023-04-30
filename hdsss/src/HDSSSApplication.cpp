@@ -121,7 +121,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
               Shader(SURFELIZE_TESC, ShaderType::TessellationControl),
               Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
           },
-          {"tePos", "teNormal", "teRadius"}),
+          {"tePos", "teNormal", "teRadius", "teSigmaT", "teSigmaA"}),
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad) {
     ifstream ifs("camera.bin", ios::binary);
@@ -154,6 +154,8 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     initShadowMap();
     initDeferredPass();
     initTranslucencyPass();
+
+    initUpscalePass();
 
     // final pass related
     { m_finalprocess.init(); }
@@ -290,15 +292,15 @@ void HDSSSApplication::initSurfelizePass() {
     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
                           (GLvoid*)(offsetof(SurfelData, radius)));
     glEnableVertexAttribArray(2);
-    panicPossibleGLError();
 
-    // glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-    //                       (GLvoid*)(offsetof(SurfelData, sigma_t)));
-    // glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+                          (GLvoid*)(offsetof(SurfelData, sigma_t)));
+    glEnableVertexAttribArray(3);
 
-    // glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-    //                       (GLvoid*)(offsetof(SurfelData, sigma_a)));
-    // glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
+                          (GLvoid*)(offsetof(SurfelData, sigma_a)));
+    glEnableVertexAttribArray(4);
+
     glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbo);
     panicPossibleGLError();
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -308,6 +310,18 @@ void HDSSSApplication::initSurfelizePass() {
     m_surfelbuffer.vbo = vbo;
     panicPossibleGLError();
     glGenQueries(1, &m_surfelizequery);
+}
+void HDSSSApplication::initUpscalePass() {
+    std::unique_ptr<Texture2D> upscalePingpong[2];
+    for (int i = 0; i < 2; i++) {
+        upscalePingpong[i] = make_unique<Texture2D>();
+        upscalePingpong[i]->init();
+        upscalePingpong[i]->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
+        upscalePingpong[i]->setSizeFilter(GL_LINEAR, GL_LINEAR);
+    }
+    m_upscaleblur.init(std::move(upscalePingpong[0]),
+                       std::move(upscalePingpong[1]));
+    panicPossibleGLError();
 }
 
 void HDSSSApplication::gui() {
@@ -438,9 +452,9 @@ void HDSSSApplication::gui() {
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
     m_finalprocess.render(*m_transmitted_irradiance, *m_reflected_radiance,
-                          *m_translucencytex, Texture2D::getBlackTexture(),
-                          *m_gbuffers.buffer3, *m_skyboxresult,
-                          m_finalpassoptions);
+                          m_upscaleblur.getBlurResult(),
+                          Texture2D::getBlackTexture(), *m_gbuffers.buffer3,
+                          *m_skyboxresult, m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -641,7 +655,9 @@ void HDSSSApplication::translucencyPass() {
 }
 
 void HDSSSApplication::upscaleTranslucencyPass() {
-    // TODO: didn't figure out the meaning of this pass
+    m_upscaleblur.blurFrom(*m_globalquad, *m_translucencytex,
+                           GaussianBlurDirection::X);
+    m_upscaleblur.blur(*m_globalquad, GaussianBlurDirection::Y);
 }
 
 void HDSSSApplication::SSSSPass() {}

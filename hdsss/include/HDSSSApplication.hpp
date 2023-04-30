@@ -15,9 +15,8 @@
 #include <string>
 #include <vector>
 
-#include <loo/AtomicCounter.hpp>
-#include <loo/ShaderStorageBuffer.hpp>
 #include "FinalProcess.hpp"
+#include "GaussianBlur.hpp"
 #include "constants.hpp"
 
 class HDSSSApplication : public loo::Application {
@@ -37,6 +36,8 @@ class HDSSSApplication : public loo::Application {
 
     void initTranslucencyPass();
     void initSurfelizePass();
+
+    void initUpscalePass();
 
     void loop() override;
     void gui();
@@ -134,6 +135,7 @@ class HDSSSApplication : public loo::Application {
     loo::Framebuffer m_surfelizefb;
     float m_surfelizescale{0.00085f}, m_splattingstrength{1.0f};
 
+    GaussianBlur m_upscaleblur;
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;
 

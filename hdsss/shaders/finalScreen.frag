@@ -28,9 +28,11 @@ void main() {
     vec3 sss = texture(sssTexture, texCoord).rgb;
     vec3 skyboxTexture = texture(skyboxTexture, texCoord).rgb;
 #ifdef MATERIAL_PBR
-    bool sssEnabled = length(texture(GBuffer3, texCoord).r) != 0.0;
+    float transmission = texture(GBuffer3, texCoord).r;
+    bool sssEnabled = length(transmission) != 0.0;
 #else
     bool sssEnabled = length(texture(GBuffer3, texCoord).rgb) > 0.0;
+    float transmission = 1.0;
 #endif
     vec3 color = vec3(0.0);
     if (sssEnabled) {
@@ -41,7 +43,8 @@ void main() {
             color += specular;
         }
         if (enableTranslucency) {
-            color += translucency;
+            color *= 1.0 - transmission;
+            color += translucency * transmission;
         }
         if (enableSSS) {
             color += sss;

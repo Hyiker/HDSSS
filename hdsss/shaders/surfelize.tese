@@ -12,12 +12,14 @@ layout(triangles, equal_spacing,
 layout(location = 0) in vec3 tcPosition[];  // Vertex positions in world space
 layout(location = 1) in vec3 tcNormal[];    // Vertex normals in model space
 layout(location = 2) patch in float tcRadius;  // Radius
+layout(location = 3) patch in vec3 tcSigmaT;   // sigma_t
+layout(location = 4) patch in vec3 tcSigmaA;   // sigma_a
 
-layout(binding = 0) uniform atomic_uint surfelCounter;
-
-layout(location = 0) out vec4 tePos;
-layout(location = 1) out vec3 teNormal;
-layout(location = 2) out float teRadius;
+layout(location = 0, xfb_offset = 0) out vec3 tePos;
+layout(location = 1, xfb_offset = 12) out vec3 teNormal;
+layout(location = 2, xfb_offset = 24) out float teRadius;
+layout(location = 3, xfb_offset = 28) out vec3 teSigmaT;  // sigma_t
+layout(location = 4, xfb_offset = 40) out vec3 teSigmaA;  // sigma_a
 
 #ifdef MATERIAL_PBR
 layout(std140, binding = 3) uniform PBRMetallicMaterial {
@@ -61,9 +63,10 @@ void main() {
          (2.0 * computeRandomOffset(position + tcPosition[2]) - 1.0) * t1);
 
     float radius = tcRadius;
-    atomicCounterIncrement(surfelCounter);
 
-    tePos = vec4(position, 1.0);
+    tePos = position;
     teNormal = normal;
     teRadius = radius;
+    teSigmaT = tcSigmaT;
+    teSigmaA = tcSigmaA;
 }
