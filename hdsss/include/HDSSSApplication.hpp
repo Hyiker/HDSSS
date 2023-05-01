@@ -129,6 +129,10 @@ class HDSSSApplication : public loo::Application {
         GLuint vbo;
     } m_surfelbuffer;
     loo::Framebuffer m_translucencyfb;
+    struct TranslucencyUniforms {
+        float minimalEffect{0.0001f};
+        float maxDistance{0.006f};
+    } m_translucencyuniforms;
     std::unique_ptr<loo::Texture2D> m_translucencytex;
 
     // scene surfelize
@@ -136,6 +140,7 @@ class HDSSSApplication : public loo::Application {
     float m_surfelizescale{0.00085f}, m_splattingstrength{1.0f};
 
     GaussianBlur m_upscaleblur;
+    int m_upscaleblurpass{2};
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;
 

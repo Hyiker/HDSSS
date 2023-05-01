@@ -68,6 +68,10 @@ static void mouseCallback(GLFWwindow* window, double xposIn, double yposIn) {
 }
 
 static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
+    if (ImGui::GetIO().WantCaptureMouse) {
+        ImGui_ImplGlfw_ScrollCallback(window, xOffset, yOffset);
+        return;
+    }
     auto myapp =
         static_cast<HDSSSApplication*>(glfwGetWindowUserPointer(window));
     myapp->getCamera().processMouseScroll(xOffset, yOffset);
@@ -261,7 +265,7 @@ void HDSSSApplication::initTranslucencyPass() {
     m_translucencytex->init();
     m_translucencytex->setupStorage(getWidth() >> 2, getHeight() >> 2,
                                     GL_RGB32F, 1);
-    m_translucencytex->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+    m_translucencytex->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
     m_translucencyfb.attachTexture(*m_translucencytex, GL_COLOR_ATTACHMENT0, 0);
     m_translucencyfb.enableAttachments({GL_COLOR_ATTACHMENT0});
@@ -415,6 +419,15 @@ void HDSSSApplication::gui() {
                 ImGui::SliderFloat("Splatting strength", &m_splattingstrength,
                                    1.0f, 1e2f, "%.1f",
                                    ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Splatting minEffect",
+                                   &m_translucencyuniforms.minimalEffect,
+                                   0.0001, 1.0, "%.4f",
+                                   ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderFloat("Splatting maxDistance",
+                                   &m_translucencyuniforms.maxDistance, 0.0001,
+                                   5.0, "%.4f", ImGuiSliderFlags_Logarithmic);
+                ImGui::SliderInt("Gaussian blur pass", &m_upscaleblurpass, 0,
+                                 12);
                 ImGui::TextWrapped(
                     "Below fields only effect materials with SSS masks");
                 ImGui::Checkbox("Use diffuse texture",
@@ -451,10 +464,11 @@ void HDSSSApplication::gui() {
 
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
-    m_finalprocess.render(*m_transmitted_irradiance, *m_reflected_radiance,
-                          m_upscaleblur.getBlurResult(),
-                          Texture2D::getBlackTexture(), *m_gbuffers.buffer3,
-                          *m_skyboxresult, m_finalpassoptions);
+    m_finalprocess.render(
+        *m_transmitted_irradiance, *m_reflected_radiance,
+        m_upscaleblurpass ? m_upscaleblur.getBlurResult() : *m_translucencytex,
+        Texture2D::getBlackTexture(), *m_gbuffers.buffer3, *m_skyboxresult,
+        m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -629,6 +643,10 @@ void HDSSSApplication::splattingPass() {
             glm::ivec2(getWidth() >> 2, getHeight() >> 2));
         m_translucencyshader.setUniform("lightSpaceMatrix",
                                         m_lights[0].getLightSpaceMatrix());
+        m_translucencyshader.setUniform("minimalEffect",
+                                        m_translucencyuniforms.minimalEffect);
+        m_translucencyshader.setUniform("maxDistance",
+                                        m_translucencyuniforms.maxDistance);
         m_translucencyshader.setTexture(0, *m_gbuffers.position);
         m_translucencyshader.setTexture(1, *m_gbuffers.normal);
         m_translucencyshader.setTexture(2, *m_mainlightshadowmap);
@@ -651,13 +669,18 @@ void HDSSSApplication::translucencyPass() {
     panicPossibleGLError();
 
     splattingPass();
-    m_translucencytex->generateMipmap();
 }
 
 void HDSSSApplication::upscaleTranslucencyPass() {
-    m_upscaleblur.blurFrom(*m_globalquad, *m_translucencytex,
-                           GaussianBlurDirection::X);
-    m_upscaleblur.blur(*m_globalquad, GaussianBlurDirection::Y);
+    auto direction = GaussianBlurDirection::X;
+    for (int i = 0; i < m_upscaleblurpass; ++i) {
+        if (i == 0)
+            m_upscaleblur.blurFrom(*m_globalquad, *m_translucencytex,
+                                   GaussianBlurDirection::X);
+        else
+            m_upscaleblur.blur(*m_globalquad, direction);
+        direction = static_cast<GaussianBlurDirection>(((int)direction) ^ 1);
+    }
 }
 
 void HDSSSApplication::SSSSPass() {}
