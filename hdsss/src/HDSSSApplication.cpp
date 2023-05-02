@@ -3,10 +3,15 @@
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
+#include <ctime>
+#include <filesystem>
 #include <fstream>
+#include <locale>
 #include <loo/glError.hpp>
 #include <memory>
 #include <vector>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
 #include "PBRMaterials.hpp"
 #include "SimpleMaterial.hpp"
 
@@ -36,6 +41,7 @@
 #include "glm/ext.hpp"
 using namespace loo;
 using namespace std;
+namespace fs = std::filesystem;
 
 static constexpr int SHADOWMAP_RESOLUION[2]{2048, 2048};
 
@@ -327,6 +333,16 @@ void HDSSSApplication::initUpscalePass() {
                        std::move(upscalePingpong[1]));
     panicPossibleGLError();
 }
+void HDSSSApplication::saveScreenshot(fs::path filename) const {
+    std::vector<unsigned char> pixels(getWidth() * getHeight() * 3);
+    glReadPixels(0, 0, getWidth(), getHeight(), GL_RGB, GL_UNSIGNED_BYTE,
+                 pixels.data());
+    stbi_flip_vertically_on_write(true);
+    stbi_write_png(filename.string().c_str(), getWidth(), getHeight(), 3,
+                   pixels.data(), getWidth() * 3);
+    stbi_flip_vertically_on_write(false);
+    panicPossibleGLError();
+}
 
 void HDSSSApplication::gui() {
     auto& io = ImGui::GetIO();
@@ -410,6 +426,9 @@ void HDSSSApplication::gui() {
                 ImGui::Checkbox("Normal mapping", &m_enablenormal);
                 ImGui::Checkbox("Parallax mapping", &m_enableparallax);
                 ImGui::Checkbox("Visualize lod", &m_lodvisualize);
+                if (ImGui::Button("Save screenshot")) {
+                    m_screenshotflag = true;
+                }
             }
 
             if (ImGui::CollapsingHeader("HDSSS options",
@@ -752,6 +771,19 @@ void HDSSSApplication::loop() {
         SSSSPass();
 
         finalScreenPass();
+
+        if (m_screenshotflag) {
+            // default saving path is the current working directory
+            // filename example: screenshot_2019-12-01_12-00-00.png
+            char filenameBuf[1024]{};
+            std::time_t time = std::time({});
+            strftime(std::data(filenameBuf), std::size(filenameBuf),
+                     "screenshot_%Y-%m-%d_%H-%M-%S.png", std::gmtime(&time));
+            fs::path savingPath = fs::current_path() / filenameBuf;
+            saveScreenshot(savingPath);
+            LOG(INFO) << "Screenshot saved to " << fs::absolute(savingPath);
+            m_screenshotflag = false;
+        }
     }
 
     keyboard();

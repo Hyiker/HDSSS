@@ -1,6 +1,7 @@
 #ifndef HDSSS_INCLUDE_HDSSSAPPLICATION_HPP
 #define HDSSS_INCLUDE_HDSSSAPPLICATION_HPP
 
+#include <filesystem>
 #include <glm/glm.hpp>
 #include <loo/Application.hpp>
 #include <loo/Camera.hpp>
@@ -66,6 +67,7 @@ class HDSSSApplication : public loo::Application {
     void clear();
     void keyboard();
     void mouse();
+    void saveScreenshot(std::filesystem::path filename) const;
     struct MVP {
         glm::mat4 model;
         glm::mat4 view;
@@ -151,6 +153,7 @@ class HDSSSApplication : public loo::Application {
     bool m_enablenormal{true};
     bool m_enableparallax{true};
     bool m_lodvisualize{false};
+    bool m_screenshotflag{false};
 
     FinalPassOptions m_finalpassoptions;
     // float m_displaceintensity{};

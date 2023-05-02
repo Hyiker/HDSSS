@@ -144,11 +144,11 @@ int Application::getWindowHeight() {
     return height;
 }
 #else
-int Application::getWidth() {
+int Application::getWidth() const {
     return width;
 }
 
-int Application::getHeight() {
+int Application::getHeight() const {
     return height;
 }
 #endif

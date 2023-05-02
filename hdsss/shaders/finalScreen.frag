@@ -39,11 +39,14 @@ void main() {
         if (enableDiffuse) {
             color += diffuse;
         }
+        if (enableTranslucency) {
+            color *= 1.0 - transmission;
+        }
+
         if (enableSpecular) {
             color += specular;
         }
         if (enableTranslucency) {
-            color *= 1.0 - transmission;
             color += translucency * transmission;
         }
         if (enableSSS) {

@@ -1,6 +1,6 @@
 add_rules("mode.debug", "mode.release")
 
-add_requires("glfw 3.3.8", "glm 0.9.9+8", "glog v0.6.0", "assimp v5.2.5", "meshoptimizer v0.18")
+add_requires("glfw 3.3.8", "glm 0.9.9+8", "glog v0.6.0", "assimp v5.2.5", "meshoptimizer v0.18", "stb 2023.01.30")
 add_requires("imgui v1.89", {configs = {glfw_opengl3 = true, use_glad = true}})
 
 package("meshoptimizer")
@@ -38,10 +38,10 @@ package("meshoptimizer")
 target("loo")
     set_kind("object")
     set_languages("c11", "cxx20")
-    add_includedirs(".", "ext/headeronly", {public = true})
+    add_includedirs(".", {public = true})
 
     add_files("src/*.cpp")
-    add_packages("glfw", "glm", "glog", "imgui", "assimp", "meshoptimizer", {public = true})
+    add_packages("glfw", "glm", "glog", "imgui", "assimp", "meshoptimizer", "stb", {public = true})
 
     -- glad
     if is_plat("macosx") then

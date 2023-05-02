@@ -57,8 +57,8 @@ class LOO_EXPORT Application {
     int getWindowWidth();
     int getWindowHeight();
 #else
-    int getWidth();
-    int getHeight();
+    int getWidth() const;
+    int getHeight() const;
 #endif /* LOO_LOO_APPLICATION_HPP */
 
     float getWindowRatio();
