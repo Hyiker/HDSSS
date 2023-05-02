@@ -36,6 +36,8 @@
 #include "shaders/translucency.frag.hpp"
 #include "shaders/translucency.geom.hpp"
 #include "shaders/translucency.vert.hpp"
+#include "shaders/upscale.frag.hpp"
+#include "shaders/upscale.vert.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/ext.hpp"
@@ -132,6 +134,10 @@ HDSSSApplication::HDSSSApplication(int width, int height,
               Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
           },
           {"tePos", "teNormal", "teRadius", "teSigmaT", "teSigmaA"}),
+      m_upscaleshader{
+          Shader(UPSCALE_VERT, ShaderType::Vertex),
+          Shader(UPSCALE_FRAG, ShaderType::Fragment),
+      },
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad) {
     ifstream ifs("camera.bin", ios::binary);
@@ -328,15 +334,13 @@ void HDSSSApplication::initSurfelizePass() {
     glGenQueries(1, &m_surfelizequery);
 }
 void HDSSSApplication::initUpscalePass() {
-    std::unique_ptr<Texture2D> upscalePingpong[2];
-    for (int i = 0; i < 2; i++) {
-        upscalePingpong[i] = make_unique<Texture2D>();
-        upscalePingpong[i]->init();
-        upscalePingpong[i]->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
-        upscalePingpong[i]->setSizeFilter(GL_LINEAR, GL_LINEAR);
-    }
-    m_upscaleblur.init(std::move(upscalePingpong[0]),
-                       std::move(upscalePingpong[1]));
+    m_upscalefb.init();
+    m_upscaletex = make_unique<Texture2D>();
+    m_upscaletex->init();
+    m_upscaletex->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
+    m_upscaletex->setSizeFilter(GL_LINEAR, GL_LINEAR);
+    m_upscalefb.attachTexture(*m_upscaletex, GL_COLOR_ATTACHMENT0, 0);
+    m_upscalefb.enableAttachments({GL_COLOR_ATTACHMENT0});
     panicPossibleGLError();
 }
 void HDSSSApplication::saveScreenshot(fs::path filename) const {
@@ -451,8 +455,6 @@ void HDSSSApplication::gui() {
                 ImGui::SliderFloat("Splatting maxDistance",
                                    &m_translucencyuniforms.maxDistance, 0.0001,
                                    5.0, "%.4f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderInt("Gaussian blur pass", &m_upscaleblurpass, 0,
-                                 12);
                 ImGui::TextWrapped(
                     "Below fields only effect materials with SSS masks");
                 ImGui::Checkbox("Use diffuse texture",
@@ -490,11 +492,10 @@ void HDSSSApplication::gui() {
 
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
-    m_finalprocess.render(
-        *m_diffuseresult, *m_reflected_radiance,
-        m_upscaleblurpass ? m_upscaleblur.getBlurResult() : *m_translucencytex,
-        Texture2D::getBlackTexture(), *m_gbuffers.buffer3, *m_skyboxresult,
-        m_finalpassoptions);
+    m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
+                          *m_upscaletex, Texture2D::getBlackTexture(),
+                          *m_gbuffers.buffer3, *m_skyboxresult,
+                          m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -694,15 +695,11 @@ void HDSSSApplication::translucencyPass() {
 }
 
 void HDSSSApplication::upscaleTranslucencyPass() {
-    auto direction = GaussianBlurDirection::X;
-    for (int i = 0; i < m_upscaleblurpass; ++i) {
-        if (i == 0)
-            m_upscaleblur.blurFrom(*m_globalquad, *m_translucencytex,
-                                   GaussianBlurDirection::X);
-        else
-            m_upscaleblur.blur(*m_globalquad, direction);
-        direction = static_cast<GaussianBlurDirection>(((int)direction) ^ 1);
-    }
+    m_upscalefb.bind();
+    m_upscaleshader.use();
+    m_upscaleshader.setTexture(0, *m_translucencytex);
+    m_globalquad->draw();
+    m_upscalefb.unbind();
 }
 
 void HDSSSApplication::SSSSPass() {

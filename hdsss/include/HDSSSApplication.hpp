@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "FinalProcess.hpp"
-#include "GaussianBlur.hpp"
 #include "constants.hpp"
 
 class HDSSSApplication : public loo::Application {
@@ -143,8 +142,11 @@ class HDSSSApplication : public loo::Application {
     loo::Framebuffer m_surfelizefb;
     float m_surfelizescale{0.00085f}, m_splattingstrength{1.0f};
 
-    GaussianBlur m_upscaleblur;
-    int m_upscaleblurpass{2};
+    // upscale pass
+    loo::ShaderProgram m_upscaleshader;
+    loo::Framebuffer m_upscalefb;
+    std::unique_ptr<loo::Texture2D> m_upscaletex;
+
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;
 
