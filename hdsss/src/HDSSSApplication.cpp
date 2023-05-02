@@ -708,7 +708,7 @@ void HDSSSApplication::upscaleTranslucencyPass() {
 void HDSSSApplication::SSSSPass() {
     m_gbuffers.position->generateMipmap();
     m_gbuffers.normal->generateMipmap();
-    m_diffuseresult->generateMipmap();
+    m_transmitted_irradiance->generateMipmap();
 }
 
 void HDSSSApplication::scene() {

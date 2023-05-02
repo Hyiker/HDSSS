@@ -63,12 +63,13 @@ float radianceFactor(const in vec3 direction) {
     return 1.0 / PI;
 }
 
-vec3 computeEffect(const in Surfel surfel, const in SplatReceiver receiver) {
+vec3 computeEffect(const in Surfel surfel, const in vec3 adjustedXi,
+                   const in SplatReceiver receiver) {
     vec3 sigma_a = surfel.sigma_a;
     vec3 sigma_s_prime = surfel.sigma_s_prime;
 
     return radianceFactor(vec3(0.0, 0.0, 0.0)) *
-           computeRadiantExitance(surfel.position, receiver.position,
+           computeRadiantExitance(adjustedXi, receiver.position,
                                   surfel.radius * surfel.radius * PI,
                                   sigma_s_prime, sigma_a) *
            surfel.light;

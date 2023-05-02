@@ -74,10 +74,12 @@ void emit(const in vec3 position, const in float surfelRadius,
     pixelUV = 0.5 * pixelUV + 0.5;
     vec3 pixelPosition = texture(GBufferPosition, pixelUV).xyz;
 
-    const vec3 viewDirection = cameraPos - pixelPosition.xyz;
+    const vec3 viewDirection = normalize(cameraPos - pixelPosition.xyz);
     const bool isBackside =
         dot(geometrySurfel.position - pixelPosition.xyz, viewDirection) < 0.0 &&
-        dot(geometrySurfel.normal, viewDirection) < 0.0;
+        // adjust the criterion by equation(8)
+        // compensate for the steep view angle triangles
+        dot(normalize(geometrySurfel.normal), viewDirection) < 0.2;
     if (!isBackside)
         return;
 

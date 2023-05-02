@@ -23,16 +23,22 @@ void main() {
     vec2 uv = gl_FragCoord.xy / vec2(framebufferDeviceStep.resolution);
     const vec3 pixelNormal = texture(GBufferNormal, uv).xyz;
     const vec4 pixelPosition = texture(GBufferPosition, uv);
-    const float distanceToSurfel =
-        length(pixelPosition.xyz - geometrySurfel.position);
+    const vec3 xo = pixelPosition.xyz;
+    const vec3 xi = geometrySurfel.position;
+    const float distanceToSurfel = length(xo - xi);
 
     if (pixelPosition.a > 0.0 && distanceToSurfel < geometryMaxDistance &&
         distanceToSurfel < geometryOuterRadius &&
         distanceToSurfel > geometryInnerRadius) {
-        fragColor =
-            computeEffect(geometrySurfel,
-                          SplatReceiver(pixelPosition.xyz, pixelNormal)) *
-            strength;
+        vec3 adjustedXi = xi;
+        vec3 ni = normalize(geometrySurfel.normal);
+        vec3 xi_ = xo + ni * dot(xo - xi, ni);
+        vec3 xi_xi_ = xi_ - xi;
+        float rDisk = SQRT_3 * geometrySurfel.radius;
+        adjustedXi += normalize(xi_xi_) * min(rDisk, length(xi_xi_));
+        fragColor = computeEffect(geometrySurfel, adjustedXi,
+                                  SplatReceiver(xo, pixelNormal)) *
+                    strength;
     } else {
         fragColor = vec3(0.0);
     }
