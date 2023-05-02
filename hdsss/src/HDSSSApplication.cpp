@@ -238,26 +238,32 @@ void HDSSSApplication::initShadowMap() {
 }
 void HDSSSApplication::initDeferredPass() {
     m_deferredfb.init();
-    m_transmitted_irradiance = make_shared<Texture2D>();
+    m_diffuseresult = make_shared<Texture2D>();
+    m_diffuseresult->init();
+    m_diffuseresult->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
+    m_diffuseresult->setSizeFilter(GL_LINEAR, GL_LINEAR);
+
+    m_transmitted_irradiance = make_unique<Texture2D>();
     m_transmitted_irradiance->init();
-    m_transmitted_irradiance->setupStorage(getWidth(), getHeight(), GL_RGBA32F,
+    m_transmitted_irradiance->setupStorage(getWidth(), getHeight(), GL_RGB32F,
                                            -1);
     m_transmitted_irradiance->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
     m_reflected_radiance = make_unique<Texture2D>();
     m_reflected_radiance->init();
-    m_reflected_radiance->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_reflected_radiance->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
     m_reflected_radiance->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
     m_skyboxresult = make_unique<Texture2D>();
     m_skyboxresult->init();
-    m_skyboxresult->setupStorage(getWidth(), getHeight(), GL_RGBA32F, 1);
+    m_skyboxresult->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
     m_skyboxresult->setSizeFilter(GL_LINEAR, GL_LINEAR);
 
-    m_deferredfb.attachTexture(*m_transmitted_irradiance, GL_COLOR_ATTACHMENT0,
+    m_deferredfb.attachTexture(*m_diffuseresult, GL_COLOR_ATTACHMENT0, 0);
+    m_deferredfb.attachTexture(*m_transmitted_irradiance, GL_COLOR_ATTACHMENT1,
                                0);
-    m_deferredfb.attachTexture(*m_reflected_radiance, GL_COLOR_ATTACHMENT1, 0);
-    m_deferredfb.attachTexture(*m_skyboxresult, GL_COLOR_ATTACHMENT2, 0);
+    m_deferredfb.attachTexture(*m_reflected_radiance, GL_COLOR_ATTACHMENT2, 0);
+    m_deferredfb.attachTexture(*m_skyboxresult, GL_COLOR_ATTACHMENT3, 0);
     m_deferredfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
     panicPossibleGLError();
 }
@@ -465,9 +471,10 @@ void HDSSSApplication::gui() {
         float h_img = h * 0.2,
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
-        vector<GLuint> textures{m_gbuffers.albedo->getId(),
-                                m_gbuffers.normal->getId(),
-                                m_translucencytex->getId()};
+        vector<GLuint> textures{
+            m_gbuffers.normal->getId(),
+            m_transmitted_irradiance->getId(),
+        };
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -484,7 +491,7 @@ void HDSSSApplication::gui() {
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
     m_finalprocess.render(
-        *m_transmitted_irradiance, *m_reflected_radiance,
+        *m_diffuseresult, *m_reflected_radiance,
         m_upscaleblurpass ? m_upscaleblur.getBlurResult() : *m_translucencytex,
         Texture2D::getBlackTexture(), *m_gbuffers.buffer3, *m_skyboxresult,
         m_finalpassoptions);
@@ -573,7 +580,7 @@ void HDSSSApplication::deferredPass() {
 
     m_deferredfb.bind();
     m_deferredfb.enableAttachments(
-        {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1});
+        {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2});
 
     glClearColor(0.f, 0.f, 0.f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -602,7 +609,7 @@ void HDSSSApplication::deferredPass() {
     glDisable(GL_DEPTH_TEST);
     m_globalquad->draw();
 
-    m_deferredfb.enableAttachments({GL_COLOR_ATTACHMENT2});
+    m_deferredfb.enableAttachments({GL_COLOR_ATTACHMENT3});
     glClearColor(0.f, 0.f, 0.f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -681,10 +688,6 @@ void HDSSSApplication::splattingPass() {
 void HDSSSApplication::translucencyPass() {
     surfelizePass();
 
-    // m_gbuffers.position->generateMipmap();
-    // m_gbuffers.normal->generateMipmap();
-    // m_transmitted_irradiance->generateMipmap();
-
     panicPossibleGLError();
 
     splattingPass();
@@ -702,7 +705,11 @@ void HDSSSApplication::upscaleTranslucencyPass() {
     }
 }
 
-void HDSSSApplication::SSSSPass() {}
+void HDSSSApplication::SSSSPass() {
+    m_gbuffers.position->generateMipmap();
+    m_gbuffers.normal->generateMipmap();
+    m_diffuseresult->generateMipmap();
+}
 
 void HDSSSApplication::scene() {
     glEnable(GL_DEPTH_TEST);

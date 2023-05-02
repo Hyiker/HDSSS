@@ -1,5 +1,5 @@
-#ifndef HDSSS_SHADERS_INCLUDE_SUBSURFACE_GLSL
-#define HDSSS_SHADERS_INCLUDE_SUBSURFACE_GLSL
+#ifndef HDSSS_SHADERS_INCLUDE_SUBSURFACE_HPP
+#define HDSSS_SHADERS_INCLUDE_SUBSURFACE_HPP
 
 #extension GL_GOOGLE_include_directive : enable
 #include "./surfel.glsl"
@@ -74,4 +74,4 @@ vec3 computeEffect(const in Surfel surfel, const in SplatReceiver receiver) {
            surfel.light;
 }
 
-#endif /* HDSSS_SHADERS_INCLUDE_SUBSURFACE_GLSL */
+#endif /* HDSSS_SHADERS_INCLUDE_SUBSURFACE_HPP */

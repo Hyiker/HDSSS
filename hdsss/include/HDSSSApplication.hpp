@@ -112,7 +112,9 @@ class HDSSSApplication : public loo::Application {
     loo::ShaderProgram m_deferredshader;
     loo::Framebuffer m_deferredfb;
     // diffuse
-    std::shared_ptr<loo::Texture2D> m_transmitted_irradiance;
+    std::shared_ptr<loo::Texture2D> m_diffuseresult;
+    // transmitted_irradiance
+    std::unique_ptr<loo::Texture2D> m_transmitted_irradiance;
     // specular
     std::unique_ptr<loo::Texture2D> m_reflected_radiance;
     // skybox

@@ -15,8 +15,9 @@ uniform mat4 mainLightMatrix;
 uniform vec3 cameraPosition;
 
 in vec2 texCoord;
-layout(location = 0) out vec4 TransmittedIrradiance;
-layout(location = 1) out vec4 ReflectedRadiance;
+layout(location = 0) out vec3 DiffuseResult;
+layout(location = 1) out vec3 TransmittedIrradiance;
+layout(location = 2) out vec3 ReflectedRadiance;
 
 layout(std140, binding = 1) uniform LightBlock {
     ShaderLight lights[12];
@@ -42,7 +43,8 @@ void main() {
     roughness = occlusionRoughness.g;
 
     vec3 V = normalize(cameraPosition - positionWS);
-    vec3 t_irradiance = vec3(0.0), r_radiance = vec3(0.0);
+    vec3 diffuse_reflect = vec3(0.0), r_radiance = vec3(0.0),
+         t_irradiance = vec3(0.0);
     for (int i = 0; i < nLights; i++) {
         ShaderLight light = lights[i];
         float distance = 1.0;
@@ -57,7 +59,7 @@ void main() {
         float intensity = light.intensity / (distance * distance);
         float shadow =
             computeShadow(mainLightMatrix, MainLightShadowMap, positionWS);
-        vec3 irradiance, radiance;
+        vec3 diff, radiance, irradiance;
 #ifdef MATERIAL_PBR
         SurfaceParamsPBRMetallicRoughness surface;
         surface.viewDirection = V;
@@ -65,19 +67,25 @@ void main() {
         surface.baseColor = albedo.rgb;
         surface.metallic = albedo.a;
         surface.roughness = roughness;
-        computePBRMetallicRoughnessLocalLighting(
-            surface, light, V, L, intensity, irradiance, radiance);
+        computePBRMetallicRoughnessLocalLighting(surface, light, V, L,
+                                                 intensity, diff, radiance);
+        irradiance += transparent.r *
+                      computeSurfaceIrradiance(positionWS, normalWS, light);
 #else
         SurfaceParamsBlinnPhong params;
         params.albedo = albedo;
         params.shininess = 20.0;
         params.normal = normalWS;
-        computeBlinnPhongLocalLighting(params, light, V, L, intensity,
-                                       irradiance, radiance);
+        computeBlinnPhongLocalLighting(params, light, V, L, intensity, diff,
+                                       radiance);
+        irradiance +=
+            transparent * computeSurfaceIrradiance(positionWS, normalWS, light);
 #endif
-        t_irradiance += irradiance * (1.0 - shadow);
+        diffuse_reflect += diff * (1.0 - shadow);
         r_radiance += radiance * (1.0 - shadow);
+        t_irradiance += irradiance * (1.0 - shadow);
     }
-    TransmittedIrradiance = vec4(t_irradiance, 1.0);
-    ReflectedRadiance = vec4(r_radiance, 1.0);
+    DiffuseResult = diffuse_reflect;
+    TransmittedIrradiance = t_irradiance;
+    ReflectedRadiance = r_radiance;
 }
