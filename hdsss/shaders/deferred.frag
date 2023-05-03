@@ -70,7 +70,8 @@ void main() {
         computePBRMetallicRoughnessLocalLighting(surface, light, V, L,
                                                  intensity, diff, radiance);
         irradiance += transparent.r *
-                      computeSurfaceIrradiance(positionWS, normalWS, light);
+                      computeSurfaceIrradiance(positionWS, normalWS, light) *
+                      (1.0 - shadow);
 #else
         SurfaceParamsBlinnPhong params;
         params.albedo = albedo;
@@ -78,8 +79,9 @@ void main() {
         params.normal = normalWS;
         computeBlinnPhongLocalLighting(params, light, V, L, intensity, diff,
                                        radiance);
-        irradiance +=
-            transparent * computeSurfaceIrradiance(positionWS, normalWS, light);
+        irradiance += transparent *
+                      computeSurfaceIrradiance(positionWS, normalWS, light) *
+                      (1.0 - shadow);
 #endif
         diffuse_reflect += diff * (1.0 - shadow);
         r_radiance += radiance * (1.0 - shadow);

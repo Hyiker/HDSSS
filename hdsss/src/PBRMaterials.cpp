@@ -43,7 +43,12 @@ std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
     const auto& pbrMetallic = baseMaterial.mrWorkFlow;
     auto metallicMaterial = std::make_shared<PBRMetallicMaterial>(
         pbrMetallic.baseColor, pbrMetallic.metallic, pbrMetallic.transmission,
-        pbrMetallic.sigma_t, pbrMetallic.sigma_a, pbrMetallic.roughness);
+        // TODO: use measured data, currently using the marble data
+        glm::vec3(2.19, 2.62, 2.00) + glm::vec3(0.0021, 0.0041, 0.0071),
+        glm::vec3(0.0021, 0.0041, 0.0071),
+
+        // pbrMetallic.sigma_t, pbrMetallic.sigma_a,
+        pbrMetallic.roughness);
     metallicMaterial->baseColorTex = pbrMetallic.baseColorTex;
     metallicMaterial->normalTex = baseMaterial.normalTex;
     metallicMaterial->metallicTex = pbrMetallic.metallicTex;

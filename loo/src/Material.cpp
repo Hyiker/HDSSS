@@ -70,7 +70,6 @@ static MetallicRoughnessWorkFlow createMetallicRoughnessWorkFlowFromAssimp(
     aMaterial->Get(AI_MATKEY_METALLIC_FACTOR, metallic);
     aMaterial->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughness);
 
-    // TODO: AI_MATKEY_TRANSMISSION_FACTOR, AI_MATKEY_VOLUME_ATTENUATION_COLOR
     float transmission = 0.0, mfp = 0.0;
     aMaterial->Get(AI_MATKEY_TRANSMISSION_FACTOR, transmission);
     aMaterial->Get(AI_MATKEY_VOLUME_ATTENUATION_COLOR, color);

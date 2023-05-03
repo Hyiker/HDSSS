@@ -39,6 +39,8 @@ class HDSSSApplication : public loo::Application {
 
     void initUpscalePass();
 
+    void initSSSSPass();
+
     void loop() override;
     void gui();
     void scene();
@@ -146,6 +148,12 @@ class HDSSSApplication : public loo::Application {
     loo::ShaderProgram m_upscaleshader;
     loo::Framebuffer m_upscalefb;
     std::unique_ptr<loo::Texture2D> m_upscaletex;
+
+    // ssss pass
+    loo::ShaderProgram m_ssssshader;
+    loo::Framebuffer m_ssssfb;
+    std::unique_ptr<loo::Texture2D> m_sssstex;
+    float m_ssss_pixelareascale{0.1f};
 
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;

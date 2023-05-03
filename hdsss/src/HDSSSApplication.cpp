@@ -30,6 +30,8 @@
 #include "shaders/shadowmap.vert.hpp"
 #include "shaders/skybox.frag.hpp"
 #include "shaders/skybox.vert.hpp"
+#include "shaders/ssss.frag.hpp"
+#include "shaders/ssss.vert.hpp"
 #include "shaders/surfelize.tesc.hpp"
 #include "shaders/surfelize.tese.hpp"
 #include "shaders/surfelize.vert.hpp"
@@ -138,6 +140,10 @@ HDSSSApplication::HDSSSApplication(int width, int height,
           Shader(UPSCALE_VERT, ShaderType::Vertex),
           Shader(UPSCALE_FRAG, ShaderType::Fragment),
       },
+      m_ssssshader{
+          Shader(SSSS_VERT, ShaderType::Vertex),
+          Shader(SSSS_FRAG, ShaderType::Fragment),
+      },
       m_globalquad(make_shared<Quad>()),
       m_finalprocess(getWidth(), getHeight(), m_globalquad) {
     ifstream ifs("camera.bin", ios::binary);
@@ -170,8 +176,8 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     initShadowMap();
     initDeferredPass();
     initTranslucencyPass();
-
     initUpscalePass();
+    initSSSSPass();
 
     // final pass related
     { m_finalprocess.init(); }
@@ -343,6 +349,17 @@ void HDSSSApplication::initUpscalePass() {
     m_upscalefb.enableAttachments({GL_COLOR_ATTACHMENT0});
     panicPossibleGLError();
 }
+
+void HDSSSApplication::initSSSSPass() {
+    m_ssssfb.init();
+    m_sssstex = make_unique<Texture2D>();
+    m_sssstex->init();
+    m_sssstex->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
+    m_sssstex->setSizeFilter(GL_LINEAR, GL_LINEAR);
+    m_ssssfb.attachTexture(*m_sssstex, GL_COLOR_ATTACHMENT0, 0);
+    m_ssssfb.enableAttachments({GL_COLOR_ATTACHMENT0});
+    panicPossibleGLError();
+}
 void HDSSSApplication::saveScreenshot(fs::path filename) const {
     std::vector<unsigned char> pixels(getWidth() * getHeight() * 3);
     glReadPixels(0, 0, getWidth(), getHeight(), GL_RGB, GL_UNSIGNED_BYTE,
@@ -455,6 +472,10 @@ void HDSSSApplication::gui() {
                 ImGui::SliderFloat("Splatting maxDistance",
                                    &m_translucencyuniforms.maxDistance, 0.0001,
                                    5.0, "%.4f", ImGuiSliderFlags_Logarithmic);
+
+                ImGui::SliderFloat("SSSS area scale", &m_ssss_pixelareascale,
+                                   1e-5, 1.0, "%.5f",
+                                   ImGuiSliderFlags_Logarithmic);
                 ImGui::TextWrapped(
                     "Below fields only effect materials with SSS masks");
                 ImGui::Checkbox("Use diffuse texture",
@@ -476,6 +497,7 @@ void HDSSSApplication::gui() {
         vector<GLuint> textures{
             m_gbuffers.normal->getId(),
             m_transmitted_irradiance->getId(),
+            m_sssstex->getId(),
         };
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
@@ -493,9 +515,8 @@ void HDSSSApplication::gui() {
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
     m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
-                          *m_upscaletex, Texture2D::getBlackTexture(),
-                          *m_gbuffers.buffer3, *m_skyboxresult,
-                          m_finalpassoptions);
+                          *m_upscaletex, *m_sssstex, *m_gbuffers.buffer3,
+                          *m_skyboxresult, m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -706,6 +727,17 @@ void HDSSSApplication::SSSSPass() {
     m_gbuffers.position->generateMipmap();
     m_gbuffers.normal->generateMipmap();
     m_transmitted_irradiance->generateMipmap();
+    m_ssssfb.bind();
+    m_ssssshader.use();
+    m_ssssshader.setUniform("pixelAreaScale", m_ssss_pixelareascale);
+    m_ssssshader.setTexture(0, *m_gbuffers.position);
+    m_ssssshader.setTexture(1, *m_gbuffers.normal);
+    m_ssssshader.setTexture(2, *m_gbuffers.buffer3);
+    m_ssssshader.setTexture(3, *m_gbuffers.buffer4);
+    m_ssssshader.setTexture(4, *m_transmitted_irradiance);
+
+    m_globalquad->draw();
+    m_ssssfb.unbind();
 }
 
 void HDSSSApplication::scene() {

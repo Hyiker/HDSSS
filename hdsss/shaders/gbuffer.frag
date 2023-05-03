@@ -37,20 +37,21 @@ layout(binding = 11) uniform sampler2D occlusionTex;
 layout(binding = 12) uniform sampler2D metallicTex;
 layout(binding = 13) uniform sampler2D roughnessTex;
 
-void GBufferFromSimpleMaterial(
-    in vec2 texCoord, in sampler2D baseColorTex, in sampler2D occlusionTex,
-    in sampler2D metallicTex, in sampler2D roughnessTex, in vec3 baseColor,
-    in float metallic, in float transmission, in vec3 sigmaT, in vec3 sigmaA,
-    in float roughness, out vec4 GBufferAlbedo,
-    out vec4 GBufferTransmissionSigmaT, out vec4 GBufferSigmaARoughness,
-    out vec4 GBufferOcclusion) {
+void GBufferFromPBRMaterial(in vec2 texCoord, in sampler2D baseColorTex,
+                            in sampler2D occlusionTex, in sampler2D metallicTex,
+                            in sampler2D roughnessTex, in vec3 baseColor,
+                            in float metallic, in float transmission,
+                            in vec3 sigmaT, in vec3 sigmaA, in float roughness,
+                            out vec4 GBufferAlbedo,
+                            out vec4 GBufferTransmissionSigmaT,
+                            out vec4 GBufferSigmaARoughness,
+                            out vec4 GBufferOcclusion) {
     GBufferAlbedo.rgb = texture(baseColorTex, texCoord).rgb * baseColor;
     GBufferAlbedo.a = texture(metallicTex, texCoord).r * metallic;
     GBufferTransmissionSigmaT.r = transmission;
     GBufferTransmissionSigmaT.gba = sigmaT;
     GBufferSigmaARoughness.rgb = sigmaA;
-    GBufferTransmissionSigmaT.gba = vec3(0.0021, 0.0041, 0.0071);
-    GBufferSigmaARoughness.rgb = vec3(2.19, 4.62, 2.00);
+    GBufferTransmissionSigmaT.gba += GBufferSigmaARoughness.rgb;
     GBufferSigmaARoughness.a = roughness;
     GBufferOcclusion.r = texture(occlusionTex, texCoord).r;
 }
@@ -133,7 +134,7 @@ void main() {
     FragPosition = vec4(vPos, 1);
     FragNormal = sNormal;
 #ifdef MATERIAL_PBR
-    GBufferFromSimpleMaterial(
+    GBufferFromPBRMaterial(
         texCoord, baseColorTex, occlusionTex, metallicTex, roughnessTex,
         simpleMaterial.baseColorMetallic.rgb,
         simpleMaterial.baseColorMetallic.a, simpleMaterial.transmissionSigmaT.r,
