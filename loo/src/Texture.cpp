@@ -108,7 +108,7 @@ void Texture2D::setupStorage(GLsizei width, GLsizei height,
 #endif
 }
 
-void Texture2D::setup(unsigned char* data, GLsizei width, GLsizei height,
+void Texture2D::setup(const void* data, GLsizei width, GLsizei height,
                       GLenum internalformat, GLenum format, GLenum type,
                       GLint maxLevel) {
     this->width = width;

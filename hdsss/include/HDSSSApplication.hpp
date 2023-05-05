@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "BSSRDF.hpp"
 
 #include "FinalProcess.hpp"
 #include "constants.hpp"
@@ -153,8 +154,11 @@ class HDSSSApplication : public loo::Application {
     loo::ShaderProgram m_ssssshader;
     loo::Framebuffer m_ssssfb;
     std::unique_ptr<loo::Texture2D> m_sssstex;
-    float m_ssss_pixelareascale{0.1f};
-
+    float m_ssss_pixelareascale{1e-4f};
+    struct RdProfile {
+        std::unique_ptr<loo::Texture2D> texture;
+        float maxDistance, maxArea;
+    } m_rdprofile;
     // screen quad
     std::shared_ptr<loo::Quad> m_globalquad;
 

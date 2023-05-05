@@ -113,7 +113,7 @@ class LOO_EXPORT Texture2D : public Texture<GL_TEXTURE_2D> {
     // storage only
     void setupStorage(GLsizei width, GLsizei height, GLenum internalformat,
                       GLsizei maxLevel);
-    void setup(unsigned char* data, GLsizei width, GLsizei height,
+    void setup(const void* data, GLsizei width, GLsizei height,
                GLenum internalformat, GLenum format, GLenum type,
                GLint maxLevel = -1);
     static const Texture2D& getWhiteTexture();

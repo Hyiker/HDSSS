@@ -16,6 +16,12 @@ layout(binding = 2) uniform sampler2D GBuffer3;
 layout(binding = 3) uniform sampler2D GBuffer4;
 layout(binding = 4) uniform sampler2D TransmittedIrradiance;
 
+layout(binding = 5) uniform sampler2D RdProfile;
+
+uniform float pixelAreaScale;
+uniform float RdMaxArea;
+uniform float RdMaxDistance;
+
 #define INNER_LAYER_N 2
 #define OUTER_LAYER_CNT 5
 #define N_LAYERS 10
@@ -30,7 +36,13 @@ float gridWidths[N_LAYERS] = {1,
                               59.53741807651273,
                               99.22903012752123};
 
-uniform float pixelAreaScale;
+vec3 sampleFromRdProfile(in sampler2D RdProfile, in float RdMaxArea,
+                         in float RdMaxDistance, in float area,
+                         in float distance) {
+    float v = 1.0 - (area / RdMaxArea);
+    float u = distance / RdMaxDistance;
+    return texture(RdProfile, vec2(u, v)).rgb;
+}
 
 float gridIndexToPosition1D(int s, int layer) {
     return 0.5 * (2 * INNER_LAYER_N + 1) *
@@ -71,10 +83,11 @@ void computeLayerEffect(in int layer, in vec2 baseTexSize, in FragData fragData,
         vec3 transmitted_irradiance =
             sampleMipmap(TransmittedIrradiance, uv, baseTexSize.x).rgb;
 
-        color += radianceFactor(vec3(0.0)) *
-                 computeRadiantExitance(position, fragData.position, gridSize,
-                                        fragData.sigma_s, fragData.sigma_a) *
-                 transmitted_irradiance;
+        color +=
+            radianceFactor(vec3(0.0)) *
+            sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance, gridSize,
+                                length(fragData.position - position)) *
+            transmitted_irradiance;
     }
 }
 void main() {
@@ -110,8 +123,9 @@ void main() {
                 texture(TransmittedIrradiance, uv).rgb;
 
             color += radianceFactor(vec3(0.0)) *
-                     computeRadiantExitance(position, fragPositionWS,
-                                            pixelAreaScale, sigma_s, sigma_a) *
+                     sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance,
+                                         pixelAreaScale,
+                                         length(fragPositionWS - position)) *
                      transmitted_irradiance;
         }
     }

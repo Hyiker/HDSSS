@@ -7,10 +7,10 @@
 #include <memory>
 
 struct FinalPassOptions {
-    bool diffuse{true};
-    bool specular{true};
-    bool translucency{true};
-    bool SSS{false};
+    bool diffuse{false};
+    bool specular{false};
+    bool translucency{false};
+    bool SSS{true};
     bool directOutput{false};
 };
 class FinalProcess {

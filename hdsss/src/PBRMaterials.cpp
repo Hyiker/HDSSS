@@ -41,12 +41,14 @@ unique_ptr<UniformBuffer> PBRMetallicMaterial::uniformBuffer = nullptr;
 std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial) {
     const auto& pbrMetallic = baseMaterial.mrWorkFlow;
+    const vec3 marblesigmaA = vec3(0.0021, 0.0041, 0.0071),
+               marblesigmaS = vec3(2.19, 2.62, 2.00);
     auto metallicMaterial = std::make_shared<PBRMetallicMaterial>(
         pbrMetallic.baseColor, pbrMetallic.metallic, pbrMetallic.transmission,
         // TODO: use measured data, currently using the marble data
-        glm::vec3(2.19, 2.62, 2.00) + glm::vec3(0.0021, 0.0041, 0.0071),
-        glm::vec3(0.0021, 0.0041, 0.0071),
-
+        length(pbrMetallic.sigma_t) == 0 ? pbrMetallic.sigma_t
+                                         : marblesigmaA + marblesigmaS,
+        length(pbrMetallic.sigma_a) == 0 ? pbrMetallic.sigma_a : marblesigmaA,
         // pbrMetallic.sigma_t, pbrMetallic.sigma_a,
         pbrMetallic.roughness);
     metallicMaterial->baseColorTex = pbrMetallic.baseColorTex;

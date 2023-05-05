@@ -35,6 +35,9 @@ class PBRMetallicMaterial : public loo::Material {
 
    public:
     ShaderPBRMetallicMaterial& getShaderMaterial() { return m_shadermaterial; }
+    const ShaderPBRMetallicMaterial& getShaderMaterial() const {
+        return m_shadermaterial;
+    }
     PBRMetallicMaterial(glm::vec3 baseColor, float metallic, float transmission,
                         glm::vec3 sigmaT, glm::vec3 sigmaA, float roughness)
         : m_shadermaterial(baseColor, metallic, transmission, sigmaT, sigmaA,

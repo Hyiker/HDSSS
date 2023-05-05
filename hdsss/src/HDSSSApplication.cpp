@@ -495,10 +495,8 @@ void HDSSSApplication::gui() {
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
         vector<GLuint> textures{
-            m_gbuffers.normal->getId(),
-            m_transmitted_irradiance->getId(),
-            m_sssstex->getId(),
-        };
+            m_gbuffers.normal->getId(), m_transmitted_irradiance->getId(),
+            m_sssstex->getId(), m_rdprofile.texture->getId()};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -525,8 +523,28 @@ void HDSSSApplication::convertMaterial() {
         if (mesh->material) {
 #ifdef MATERIAL_PBR
             LOG(INFO) << "Converting material to PBR material";
-            mesh->material = convertPBRMetallicMaterialFromBaseMaterial(
+            auto pbrMaterial = convertPBRMetallicMaterialFromBaseMaterial(
                 *static_pointer_cast<BaseMaterial>(mesh->material));
+            if (pbrMaterial->getShaderMaterial().sigmaARoughness.r != 0.0f) {
+
+                BSSRDFTabulator tabulator;
+                fs::path savedTablet = mesh->name + "_tabulated.txt";
+                if (fs::exists(savedTablet)) {
+                    LOG(INFO) << "Loading tabulated data from " << savedTablet;
+                    tabulator.read(savedTablet.string());
+                } else {
+                    tabulator.tabulate(
+                        *static_pointer_cast<PBRMetallicMaterial>(pbrMaterial));
+                    tabulator.save(mesh->name + "_tabulated.txt");
+                }
+                m_rdprofile.texture = tabulator.generateTexture();
+                m_rdprofile.maxArea = tabulator.maxArea;
+                m_rdprofile.maxDistance = tabulator.maxDistance;
+                LOG(INFO) << "Precompute table max area: "
+                          << m_rdprofile.maxArea
+                          << " max distance: " << m_rdprofile.maxDistance;
+            }
+            mesh->material = pbrMaterial;
 #else
             LOG(INFO) << "Converting material to simple(blinn-phong) material";
             mesh->material = convertSimpleMaterialFromBaseMaterial(
@@ -730,11 +748,15 @@ void HDSSSApplication::SSSSPass() {
     m_ssssfb.bind();
     m_ssssshader.use();
     m_ssssshader.setUniform("pixelAreaScale", m_ssss_pixelareascale);
+    m_ssssshader.setUniform("RdMaxArea", m_rdprofile.maxArea);
+    m_ssssshader.setUniform("RdMaxDistance", m_rdprofile.maxDistance);
     m_ssssshader.setTexture(0, *m_gbuffers.position);
     m_ssssshader.setTexture(1, *m_gbuffers.normal);
     m_ssssshader.setTexture(2, *m_gbuffers.buffer3);
     m_ssssshader.setTexture(3, *m_gbuffers.buffer4);
     m_ssssshader.setTexture(4, *m_transmitted_irradiance);
+
+    m_ssssshader.setTexture(5, *m_rdprofile.texture);
 
     m_globalquad->draw();
     m_ssssfb.unbind();
