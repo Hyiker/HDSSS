@@ -2,6 +2,7 @@ add_rules("mode.debug", "mode.release")
 
 add_requires("glfw 3.3.8", "glm 0.9.9+8", "glog v0.6.0", "assimp v5.2.5", "meshoptimizer v0.18", "stb 2023.01.30")
 add_requires("imgui v1.89", {configs = {glfw_opengl3 = true, use_glad = true}})
+add_requires("glslang", {configs = {binaryonly = true}})
 
 package("meshoptimizer")
     set_homepage("https://github.com/zeux/meshoptimizer")

@@ -38,10 +38,6 @@ rule("glsl2hpp")
         local headerdir = outputdir
         local headerfile = path.join(headerdir, path.filename(outputfile))
         target:add("includedirs", headerdir)
-
-        -- using black magic here, TODO: fix it
-        -- spv2hpp = find_program("spv2hpp", {pathes = {target:targetdir()}})
-        -- assert(spv2hpp, "spv2hpp not found!")
     
         -- add commands
         local argv = {"r", "spv2hpp", path.absolute(spvfilepath), path.absolute(headerfile)}
@@ -75,10 +71,14 @@ target("HDSSSlib")
     add_defines("UNICODE", "_UNICODE")
     add_defines("MATERIAL_PBR")
     add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})
+target_end()
+
+add_requires("argparse 2.9")
 
 target("HDSSS")
     set_kind("binary")
     add_deps("HDSSSlib")
+    add_packages("argparse")
 
     add_files("src/main.cpp")
 
