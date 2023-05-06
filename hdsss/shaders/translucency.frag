@@ -45,9 +45,11 @@ void main() {
         //                           SplatReceiver(xo, pixelNormal)) *
         //             strength;
         vec3 n = normalize(pixelNormal), v = normalize(cameraPos - xo);
-        fragColor = computeFragmentEffect(
-            RdProfile, RdMaxArea, RdMaxDistance, pixelPosition.xyz, n,
-            surfelArea, adjustedXi, cameraPos, geometrySurfel.light);
+        fragColor =
+            computeFragmentEffect(RdProfile, RdMaxArea, RdMaxDistance,
+                                  pixelPosition.xyz, n, surfelArea, adjustedXi,
+                                  cameraPos, geometrySurfel.light) *
+            strength;
     } else {
         fragColor = vec3(0.0);
     }
