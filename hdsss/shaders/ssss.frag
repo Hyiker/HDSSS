@@ -23,6 +23,7 @@ uniform float RdMaxArea;
 uniform float RdMaxDistance;
 uniform bool samplingMarkerEnable;
 uniform ivec2 samplingMarkerCenter;
+uniform vec3 cameraPos;
 
 #define INNER_LAYER_N 2
 #define OUTER_LAYER_CNT 5
@@ -79,11 +80,10 @@ void computeLayerEffect(in int layer, in vec2 baseTexSize, in FragData fragData,
             sampleMipmap(TransmittedIrradiance, uv, gridWidth).rgb;
 
         color +=
-            radianceFactor(vec3(0.0)) *
-            sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance, gridSize,
-                                length(fragData.position - position)) *
-            transmitted_irradiance * sqrt(float(layer)) * PI_INV * 0.25 /
-            CPhi(eta);
+            computeFragmentEffect(RdProfile, RdMaxArea, RdMaxDistance,
+                                  fragData.position, fragData.normal, gridSize,
+                                  position, cameraPos, transmitted_irradiance) *
+            sqrt(layer);
 
         if (samplingMarkerEnable) {
             ivec2 xy = ivec2(samplingMarkerCenter + uvOffset);
@@ -124,11 +124,10 @@ void main() {
             vec3 transmitted_irradiance =
                 texture(TransmittedIrradiance, uv).rgb;
 
-            color += radianceFactor(vec3(0.0)) *
-                     sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance,
-                                         pixelAreaScale,
-                                         length(fragPositionWS - position)) *
-                     transmitted_irradiance * PI_INV * 0.25 / CPhi(eta);
+            color += computeFragmentEffect(RdProfile, RdMaxArea, RdMaxDistance,
+                                           fragData.position, fragData.normal,
+                                           pixelAreaScale, position, cameraPos,
+                                           transmitted_irradiance);
             // debug sampling
             if (samplingMarkerEnable) {
                 ivec2 xy = samplingMarkerCenter +

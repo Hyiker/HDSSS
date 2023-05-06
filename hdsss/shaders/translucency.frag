@@ -17,6 +17,7 @@ layout(location = 5) uniform struct FB {
     ivec2 resolution;
 } framebufferDeviceStep;
 
+layout(location = 2) uniform vec3 cameraPos;
 flat in float geometryInnerRadius;
 flat in float geometryOuterRadius;
 flat in float geometryMaxDistance;
@@ -30,6 +31,7 @@ void main() {
     const vec3 xi = geometrySurfel.position;
     const float distanceToSurfel = length(xo - xi);
 
+    float surfelArea = geometrySurfel.radius * geometrySurfel.radius * PI;
     if (pixelPosition.a > 0.0 && distanceToSurfel < geometryMaxDistance &&
         distanceToSurfel < geometryOuterRadius &&
         distanceToSurfel > geometryInnerRadius) {
@@ -42,11 +44,10 @@ void main() {
         // fragColor = computeEffect(geometrySurfel, adjustedXi,
         //                           SplatReceiver(xo, pixelNormal)) *
         //             strength;
-        fragColor =
-            radianceFactor(vec3(0.0, 0.0, 0.0)) *
-            sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance,
-                                rDisk * rDisk * PI, length(xo - adjustedXi)) *
-            PI_INV * 0.25 / CPhi(eta) * strength * geometrySurfel.light;
+        vec3 n = normalize(pixelNormal), v = normalize(cameraPos - xo);
+        fragColor = computeFragmentEffect(
+            RdProfile, RdMaxArea, RdMaxDistance, pixelPosition.xyz, n,
+            surfelArea, adjustedXi, cameraPos, geometrySurfel.light);
     } else {
         fragColor = vec3(0.0);
     }

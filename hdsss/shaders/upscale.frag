@@ -9,5 +9,5 @@ in vec2 texCoord;
 layout(binding = 0) uniform sampler2D translucencyTexture;
 void main() {
     FragColor =
-        textureCubic(translucencyTexture, texCoord, SAMPLING_MITCHELL).rgb;
+        textureCubic(translucencyTexture, texCoord, SAMPLING_CATROM).rgb;
 }

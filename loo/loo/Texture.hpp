@@ -137,6 +137,9 @@ class LOO_EXPORT Texture2DArray : public Texture<GL_TEXTURE_2D_ARRAY> {
 };
 
 class LOO_EXPORT TextureCubeMap : public Texture<GL_TEXTURE_CUBE_MAP> {
+    static TextureCubeMap whiteTexture;
+    static TextureCubeMap blackTexture;
+
    public:
     // auto builder = TextureCubeMap::builder().
     class TextureCubeMapBuilder {
@@ -184,6 +187,8 @@ class LOO_EXPORT TextureCubeMap : public Texture<GL_TEXTURE_CUBE_MAP> {
                       int maxLevel = -1);
     // face is indexed [0, 5]
     void setupFace(int face, unsigned char* data, GLenum format, GLenum type);
+    static const TextureCubeMap& getWhiteTexture();
+    static const TextureCubeMap& getBlackTexture();
 };
 // we assume cubemap texture doesn't need deduplicate
 LOO_EXPORT std::shared_ptr<TextureCubeMap> createTextureCubeMapFromFiles(

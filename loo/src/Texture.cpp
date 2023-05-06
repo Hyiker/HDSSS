@@ -219,6 +219,7 @@ void TextureCubeMap::setupStorage(GLsizei width, GLsizei height,
 #else
     NOT_IMPLEMENTED();
 #endif
+    panicPossibleGLError();
 }
 void TextureCubeMap::setupFace(int face, unsigned char* data, GLenum format,
                                GLenum type) {
@@ -295,6 +296,34 @@ std::shared_ptr<TextureCubeMap> createTextureCubeMapFromFiles(
         LOG(INFO) << "CubeMap Texture " << filename << " loaded.\n";
     }
     return tex;
+}
+
+TextureCubeMap TextureCubeMap::whiteTexture = TextureCubeMap();
+TextureCubeMap TextureCubeMap::blackTexture = TextureCubeMap();
+
+const TextureCubeMap& TextureCubeMap::getWhiteTexture() {
+    if (whiteTexture.getId() == GL_INVALID_INDEX) {
+        whiteTexture.init();
+        unsigned char whiteData[] = {255, 255, 255};
+        whiteTexture.setupStorage(1, 1, GL_RGB8, 1);
+        for (int i = 0; i < 6; i++)
+            whiteTexture.setupFace(i, whiteData, GL_RGB, GL_UNSIGNED_BYTE);
+        whiteTexture.setSizeFilter(GL_LINEAR, GL_LINEAR);
+        whiteTexture.setWrapFilter(GL_REPEAT);
+    }
+    return TextureCubeMap::whiteTexture;
+}
+const TextureCubeMap& TextureCubeMap::getBlackTexture() {
+    if (blackTexture.getId() == GL_INVALID_INDEX) {
+        blackTexture.init();
+        unsigned char blackData[] = {0, 0, 0};
+        blackTexture.setupStorage(1, 1, GL_RGB8, 1);
+        for (int i = 0; i < 6; i++)
+            blackTexture.setupFace(i, blackData, GL_RGB, GL_UNSIGNED_BYTE);
+        blackTexture.setSizeFilter(GL_LINEAR, GL_LINEAR);
+        blackTexture.setWrapFilter(GL_REPEAT);
+    }
+    return TextureCubeMap::blackTexture;
 }
 
 }  // namespace loo

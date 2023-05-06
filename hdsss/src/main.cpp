@@ -1,14 +1,15 @@
 
 #include <glog/logging.h>
 
+#include <argparse/argparse.hpp>
 #include <filesystem>
 #include <iostream>
 #include <loo/loo.hpp>
 #include <string>
-
 #include "HDSSSApplication.hpp"
-namespace fs = std::filesystem;
 
+namespace fs = std::filesystem;
+using namespace std;
 void loadScene(HDSSSApplication& app, const char* filename, float scaling) {
     using namespace std;
     fs::path p(filename);
@@ -28,16 +29,35 @@ void loadScene(HDSSSApplication& app, const char* filename, float scaling) {
 int main(int argc, char* argv[]) {
     loo::initialize(argv[0]);
 
-    if (argc < 2)
-        LOG(FATAL) << "Bad argument count\n";
-    float scaling = 1.0;
-    if (argc >= 3) {
-        scaling = std::stof(argv[2]);
+    argparse::ArgumentParser program("HDSSS");
+    program.add_argument("model").help("Model file path");
+    program.add_argument("-s", "--scaling")
+        .default_value(1.0)
+        .scan<'g', float>()
+        .help("Scaling factor of the model");
+    program.add_argument("-b", "--skybox")
+        .help(
+            "Skybox directory, name the six faces as "
+            "[front|back|left|right|top|bottom].jpg");
+    try {
+        program.parse_args(argc, argv);
+    } catch (const std::runtime_error& err) {
+        std::cerr << err.what() << endl;
+        std::cout << program;
+        exit(1);
     }
-    const char* skyboxPath{};
-    if (argc >= 4)
-        skyboxPath = argv[3];
-    HDSSSApplication app(1920, 1280, skyboxPath);
-    loadScene(app, argv[1], scaling);
+    float scaling = program.get<float>("--scaling");
+
+    const char* skyboxPath;
+    string skyboxString;
+    if (auto skybox = program.present<string>("-b")) {
+        skyboxString = *skybox;
+        skyboxPath = skyboxString.c_str();
+    } else {
+        skyboxPath = nullptr;
+    }
+    HDSSSApplication app(1920, 1080, skyboxPath);
+    auto modelPath = program.get<string>("model").c_str();
+    loadScene(app, modelPath, scaling);
     app.run();
 }

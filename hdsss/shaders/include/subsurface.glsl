@@ -75,6 +75,17 @@ vec3 computeEffect(const in Surfel surfel, const in vec3 adjustedXi,
            surfel.light;
 }
 
+float fresnelTransmittance(in float cosTheta, in float eta) {
+    float c = abs(cosTheta);
+    float g_s = sqrt(pow(eta, 2) + c * c - 1);
+    float gmc = g_s - c;
+    float gpc = g_s + c;
+    float R = ((gmc / gpc) * (gmc / gpc)) / 2. *
+              (1 + pow(((c * gpc - 1) / (c * gmc + 1)), 2));
+
+    return clamp01(1 - R);
+}
+
 vec3 sampleFromRdProfile(in sampler2D RdProfile, in float RdMaxArea,
                          in float RdMaxDistance, in float area,
                          in float distance) {
@@ -97,4 +108,19 @@ float CPhi(float eta) {
     return 1.0 / 4. * (1 - QC1x2(eta));
 }
 
+vec3 computeFragmentEffect(in sampler2D RdProfile, in float RdMaxArea,
+                           in float RdMaxDistance, in vec3 xo, in vec3 no,
+                           in float area, in vec3 xi, in vec3 cameraPos,
+                           in vec3 transmittedIrradiance) {
+    vec3 v = normalize(cameraPos - xo);
+    // outgoing fresnel term
+    float fresnelTermXo = fresnelTransmittance(dot(no, v), eta);
+    // incident fresnel term, assuming perpendicular incidence
+    float fresnelTermXi = fresnelTransmittance(1, eta);
+
+    vec3 Rd = sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance, area,
+                                  length(xo - xi));
+    return fresnelTermXo * fresnelTermXi * Rd * transmittedIrradiance * PI_INV *
+           0.25 / CPhi(eta);
+}
 #endif /* HDSSS_SHADERS_INCLUDE_SUBSURFACE_HPP */

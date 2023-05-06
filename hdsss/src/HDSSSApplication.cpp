@@ -559,20 +559,20 @@ void HDSSSApplication::convertMaterial() {
 }
 
 void HDSSSApplication::skyboxPass() {
-    if (m_skyboxtex) {
-        glDepthFunc(GL_LEQUAL);
-        glDisable(GL_CULL_FACE);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glm::mat4 view;
-        m_maincam.getViewMatrix(view);
-        m_skyboxshader.use();
-        m_mvp.view = glm::mat4(glm::mat3(view));
-        m_mvpbuffer.updateData(0, sizeof(MVP), &m_mvp);
-        m_skyboxshader.setTexture(SHADER_BINDING_PORT_SKYBOX, *m_skyboxtex);
-        m_skybox.draw();
-        glDepthFunc(GL_LESS);
-        glEnable(GL_CULL_FACE);
-    }
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glm::mat4 view;
+    m_maincam.getViewMatrix(view);
+    m_skyboxshader.use();
+    m_mvp.view = glm::mat4(glm::mat3(view));
+    m_mvpbuffer.updateData(0, sizeof(MVP), &m_mvp);
+    m_skyboxshader.setTexture(
+        SHADER_BINDING_PORT_SKYBOX,
+        m_skyboxtex ? *m_skyboxtex : TextureCubeMap::getBlackTexture());
+    m_skybox.draw();
+    glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
 }
 void HDSSSApplication::gbufferPass() {
     // render gbuffer here
@@ -766,6 +766,7 @@ void HDSSSApplication::SSSSPass() {
     m_ssssshader.setUniform("samplingMarkerEnable", m_ssss_samplingmarker);
     m_ssssshader.setUniform("samplingMarkerCenter",
                             m_ssss_samplingmarkercenter);
+    m_ssssshader.setUniform("cameraPos", m_maincam.getPosition());
     m_ssssshader.setTexture(0, *m_gbuffers.position);
     m_ssssshader.setTexture(1, *m_gbuffers.normal);
     m_ssssshader.setTexture(2, *m_gbuffers.buffer3);

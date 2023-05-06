@@ -137,7 +137,7 @@ class HDSSSApplication : public loo::Application {
     loo::Framebuffer m_translucencyfb;
     struct TranslucencyUniforms {
         float minimalEffect{0.0001f};
-        float maxDistance{0.002f};
+        float maxDistance{0.0015f};
     } m_translucencyuniforms;
     std::unique_ptr<loo::Texture2D> m_translucencytex;
 
