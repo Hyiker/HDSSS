@@ -473,9 +473,13 @@ void HDSSSApplication::gui() {
                                    &m_translucencyuniforms.maxDistance, 0.0001,
                                    5.0, "%.4f", ImGuiSliderFlags_Logarithmic);
 
+                ImGui::Checkbox("SSSS marker", &m_ssss_samplingmarker);
+                m_ssss_samplingmarkercenter.x = io.MousePos.x;
+                m_ssss_samplingmarkercenter.y = getHeight() - io.MousePos.y;
                 ImGui::SliderFloat("SSSS area scale", &m_ssss_pixelareascale,
                                    1e-5, 1.0, "%.5f",
                                    ImGuiSliderFlags_Logarithmic);
+
                 ImGui::TextWrapped(
                     "Below fields only effect materials with SSS masks");
                 ImGui::Checkbox("Use diffuse texture",
@@ -713,9 +717,14 @@ void HDSSSApplication::splattingPass() {
                                         m_translucencyuniforms.minimalEffect);
         m_translucencyshader.setUniform("maxDistance",
                                         m_translucencyuniforms.maxDistance);
+
+        m_translucencyshader.setUniform("RdMaxArea", m_rdprofile.maxArea);
+        m_translucencyshader.setUniform("RdMaxDistance",
+                                        m_rdprofile.maxDistance);
         m_translucencyshader.setTexture(0, *m_gbuffers.position);
         m_translucencyshader.setTexture(1, *m_gbuffers.normal);
         m_translucencyshader.setTexture(2, *m_mainlightshadowmap);
+        m_translucencyshader.setTexture(3, *m_rdprofile.texture);
         glBindVertexArray(m_surfelbuffer.vao);
         glDrawArrays(GL_POINTS, 0, getSurfelCount());
         logPossibleGLError();
@@ -742,6 +751,10 @@ void HDSSSApplication::upscaleTranslucencyPass() {
 }
 
 void HDSSSApplication::SSSSPass() {
+    m_gbuffers.position->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+    m_gbuffers.normal->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+    m_transmitted_irradiance->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
+
     m_gbuffers.position->generateMipmap();
     m_gbuffers.normal->generateMipmap();
     m_transmitted_irradiance->generateMipmap();
@@ -750,6 +763,9 @@ void HDSSSApplication::SSSSPass() {
     m_ssssshader.setUniform("pixelAreaScale", m_ssss_pixelareascale);
     m_ssssshader.setUniform("RdMaxArea", m_rdprofile.maxArea);
     m_ssssshader.setUniform("RdMaxDistance", m_rdprofile.maxDistance);
+    m_ssssshader.setUniform("samplingMarkerEnable", m_ssss_samplingmarker);
+    m_ssssshader.setUniform("samplingMarkerCenter",
+                            m_ssss_samplingmarkercenter);
     m_ssssshader.setTexture(0, *m_gbuffers.position);
     m_ssssshader.setTexture(1, *m_gbuffers.normal);
     m_ssssshader.setTexture(2, *m_gbuffers.buffer3);

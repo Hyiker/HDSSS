@@ -9,7 +9,10 @@ in Surfel geometrySurfel;
 
 layout(binding = 0, location = 7) uniform sampler2D GBufferPosition;
 layout(binding = 1, location = 8) uniform sampler2D GBufferNormal;
+layout(binding = 3, location = 12) uniform sampler2D RdProfile;
 layout(location = 9) uniform float strength;
+layout(location = 14) uniform float RdMaxArea;
+layout(location = 13) uniform float RdMaxDistance;
 layout(location = 5) uniform struct FB {
     ivec2 resolution;
 } framebufferDeviceStep;
@@ -36,9 +39,14 @@ void main() {
         vec3 xi_xi_ = xi_ - xi;
         float rDisk = SQRT_3 * geometrySurfel.radius;
         adjustedXi += normalize(xi_xi_) * min(rDisk, length(xi_xi_));
-        fragColor = computeEffect(geometrySurfel, adjustedXi,
-                                  SplatReceiver(xo, pixelNormal)) *
-                    strength;
+        // fragColor = computeEffect(geometrySurfel, adjustedXi,
+        //                           SplatReceiver(xo, pixelNormal)) *
+        //             strength;
+        fragColor =
+            radianceFactor(vec3(0.0, 0.0, 0.0)) *
+            sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance,
+                                rDisk * rDisk * PI, length(xo - adjustedXi)) *
+            PI_INV * 0.25 / CPhi(eta) * strength * geometrySurfel.light;
     } else {
         fragColor = vec3(0.0);
     }

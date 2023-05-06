@@ -55,15 +55,15 @@ rule("glsl2hpp")
     end)
 rule_end()
 
-target("HDSSS")
-    set_kind("binary")
-
+target("HDSSSlib")
+    set_kind("static")
     add_deps("loo", "spv2hpp")
 
-    add_includedirs("include")
-    set_languages("c11", "cxx20")
+    add_includedirs("include", {public = true})
+    set_languages("c11", "cxx20", {public = true})
     set_rules("glsl2hpp", {outputdir = "hdsss/include/shaders", defines = {"MATERIAL_PBR"}})
     add_files("shaders/*.*", "src/*.cpp")
+    remove_files("src/main.cpp")
     
 
     add_defines("_CRT_SECURE_NO_WARNINGS")
@@ -75,3 +75,11 @@ target("HDSSS")
     add_defines("UNICODE", "_UNICODE")
     add_defines("MATERIAL_PBR")
     add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})
+
+target("HDSSS")
+    set_kind("binary")
+    add_deps("HDSSSlib")
+
+    add_files("src/main.cpp")
+
+includes("test")

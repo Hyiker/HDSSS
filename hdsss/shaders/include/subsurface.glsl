@@ -75,4 +75,26 @@ vec3 computeEffect(const in Surfel surfel, const in vec3 adjustedXi,
            surfel.light;
 }
 
+vec3 sampleFromRdProfile(in sampler2D RdProfile, in float RdMaxArea,
+                         in float RdMaxDistance, in float area,
+                         in float distance) {
+    float v = 1.0 - (area / RdMaxArea);
+    float u = distance / RdMaxDistance;
+    return texture(RdProfile, vec2(u, v)).rgb;
+}
+
+float QC1x2(float eta) {
+    float eta2 = eta * eta, eta3 = eta2 * eta, eta4 = eta3 * eta,
+          eta5 = eta4 * eta;
+    if (eta < 1)
+        return 0.919317 - 3.47930 * eta + 6.753350 * eta2 - 7.809890 * eta3 +
+               4.985540 * eta4 - 1.368810 * eta5;
+    else
+        return -9.23372 + 22.2272 * eta - 20.9292 * eta2 + 10.2291 * eta3 -
+               2.54396 * eta4 + 0.254913 * eta5;
+}
+float CPhi(float eta) {
+    return 1.0 / 4. * (1 - QC1x2(eta));
+}
+
 #endif /* HDSSS_SHADERS_INCLUDE_SUBSURFACE_HPP */

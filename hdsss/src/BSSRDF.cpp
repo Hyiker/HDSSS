@@ -3,8 +3,11 @@
 #include <corecrt_math_defines.h>
 #include <cmath>
 #include <fstream>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/ext.hpp>
 #include <iostream>
 #include <limits>
+#include <string>
 #include "glm/detail/qualifier.hpp"
 using namespace std;
 using namespace glm;
@@ -55,9 +58,9 @@ tuple<double, double> equiangular_sampling(double xi, double u0, double u1,
     double pdf = h / ((theta_max - theta_min) * (pow(h, 2) + pow(t, 2)));
     return std::make_tuple(t, pdf);
 }
-tuple<double, double> exponential_sampling(double xi, dvec3 sigma_t) {
-    double t = -log(1 - xi) / sigma_t.r;
-    double pdf_t = sigma_t.r * exp(-sigma_t.r * t);
+tuple<double, double> exponential_sampling(double xi, double sigma_t) {
+    double t = -log(1 - xi) / sigma_t;
+    double pdf_t = sigma_t * exp(-sigma_t * t);
     return std::make_tuple(t, pdf_t);
 }
 
@@ -69,18 +72,17 @@ double equiangular_sampling_pdfeval(double t, double u0, double u1, double h) {
     return h / ((theta_max - theta_min) * (pow(h, 2) + pow(t, 2)));
 }
 
-double exponential_sampling_pdfeval(double t, dvec3 sigma_t) {
-    return sigma_t.r * exp(-sigma_t.r * t);
+double exponential_sampling_pdfeval(double t, double sigma_t) {
+    return sigma_t * exp(-sigma_t * t);
 }
 
-double PBDProfile(dvec3 sigma_a, dvec3 sigma_t, float eta, double r) {
+dvec3 PBDProfile(dvec3 sigma_a, dvec3 sigma_t, double eta, double r) {
 
     int num_samples_equi = 5;
     int num_samples_exp = 5;
 
     dvec3 blending_range_min = 0.9 * sigma_t;
     dvec3 blending_range_max = 1.1 * sigma_t;
-    // set precision
     dvec3 sigma_s = sigma_t - sigma_a;
 
     dvec3 D_g =
@@ -98,78 +100,81 @@ double PBDProfile(dvec3 sigma_a, dvec3 sigma_t, float eta, double r) {
     double rn = 0.5;
 
     dvec3 weight = linearstep(blending_range_min, blending_range_max, dvec3(r));
+    // print all variables
+    dvec3 KP_phi_equi(0.0), KP_E_equi(0.0);
 
-    double KP_phi_equi = 0;
-    double KP_E_equi = 0;
-
-    auto PBDEvalSample = [=](double in_r, double t) {
+    auto PBDEvalSample = [=](double in_r, double t, int channel) {
         double zr = t;
 
         double dr = sqrt(in_r * in_r + t * t);
-        double dv = sqrt(in_r * in_r + pow(t + pow(2, z_b.r), 2));
+        double dv = sqrt(in_r * in_r + pow(t + pow(2, z_b[channel]), 2));
 
-        double kappa = 1 - exp(-2 * sigma_t.r * (dr + t));
+        double kappa = 1 - exp(-2 * sigma_t[channel] * (dr + t));
 
-        double Q = alpha.r * sigma_t.r * exp(-sigma_t.r * t);
+        double Q =
+            alpha[channel] * sigma_t[channel] * exp(-sigma_t[channel] * t);
 
-        double R_phi =
-            alpha.r / (4 * M_PI) / D_g.r *
-            (exp(-sigma_tr.r * dr) / dr - exp(-sigma_tr.r * dv) / dv);
-        double R_E =
-            alpha.r / (4 * M_PI) *
-            (zr * (1 + sigma_tr.r * dr) * exp(-sigma_tr.r * dr) / pow(dr, 3) +
-             (zr + 2 * z_b.r) * (1 + sigma_tr.r * dv) * exp(-sigma_tr.r * dv) /
-                 pow(dv, 3));
+        double R_phi = alpha[channel] / (4 * M_PI) / D_g[channel] *
+                       (exp(-sigma_tr[channel] * dr) / dr -
+                        exp(-sigma_tr[channel] * dv) / dv);
+        double R_E = alpha[channel] / (4 * M_PI) *
+                     (zr * (1 + sigma_tr[channel] * dr) *
+                          exp(-sigma_tr[channel] * dr) / pow(dr, 3) +
+                      (zr + 2 * z_b[channel]) * (1 + sigma_tr[channel] * dv) *
+                          exp(-sigma_tr[channel] * dv) / pow(dv, 3));
 
         double S_phi = R_phi * Q * kappa;
         double S_E = R_E * Q * kappa;
         return std::make_tuple(S_phi, S_E);
     };
 
-    if (r < blending_range_max.r) {
-        for (int j_equi = 0; j_equi < num_samples_equi - 1; j_equi++) {
+    for (int i = 0; i < 3; i++) {
+        if (r < blending_range_max[i]) {
+            for (int j_equi = 0; j_equi < num_samples_equi; j_equi++) {
 
-            double x = (j_equi + rn) / num_samples_equi;
-            auto [t_equi, pdf_t_equi] = equiangular_sampling(
-                x, 0, numeric_limits<double>::infinity(), r);
-            auto [S_phi_equi, S_E_equi] = PBDEvalSample(r, t_equi);
-            double pdf_t_exp = exponential_sampling_pdfeval(t_equi, sigma_t);
+                double x = (j_equi + rn) / num_samples_equi;
+                auto [t_equi, pdf_t_equi] = equiangular_sampling(
+                    x, 0, numeric_limits<double>::infinity(), r);
+                auto [S_phi_equi, S_E_equi] = PBDEvalSample(r, t_equi, i);
+                double pdf_t_exp =
+                    exponential_sampling_pdfeval(t_equi, sigma_t[i]);
+                double w_t_equi_MIS =
+                    (1 - weight[i]) * double(num_samples_equi) * pdf_t_equi /
+                    ((1 - weight[i]) * double(num_samples_equi) * pdf_t_equi +
+                     weight[i] * double(num_samples_exp) * pdf_t_exp);
+                KP_phi_equi[i] += S_phi_equi * w_t_equi_MIS / pdf_t_equi;
+                KP_E_equi[i] += S_E_equi * w_t_equi_MIS / pdf_t_equi;
+            }
 
-            dvec3 w_t_equi_MIS =
-                (dvec3(1) - weight) * double(num_samples_equi) * pdf_t_equi /
-                ((dvec3(1) - weight) * double(num_samples_equi) * pdf_t_equi +
-                 weight * double(num_samples_exp) * pdf_t_exp);
-            KP_phi_equi =
-                KP_phi_equi + S_phi_equi * w_t_equi_MIS.r / pdf_t_equi;
-            KP_E_equi = KP_E_equi + S_E_equi * w_t_equi_MIS.r / pdf_t_equi;
+            KP_phi_equi[i] = KP_phi_equi[i] / num_samples_equi;
+            KP_E_equi[i] = KP_E_equi[i] / num_samples_equi;
         }
-
-        KP_phi_equi = KP_phi_equi / num_samples_equi;
-        KP_E_equi = KP_E_equi / num_samples_equi;
     }
 
-    double KP_phi_exp = 0;
-    double KP_E_exp = 0;
-    if (r > blending_range_min.r) {
-        for (int j_exp = 0; j_exp < num_samples_exp; j_exp++) {
+    dvec3 KP_phi_exp(0), KP_E_exp(0);
+    for (int i = 0; i < 3; i++) {
+        if (r > blending_range_min[i]) {
+            for (int j_exp = 0; j_exp < num_samples_exp; j_exp++) {
 
-            double x = (j_exp + rn) / num_samples_exp;
-            auto [t_exp, pdf_t_exp] = exponential_sampling(x, sigma_t);
-            auto [S_phi_exp, S_E_exp] = PBDEvalSample(r, t_exp);
-            double pdf_t_equi = equiangular_sampling_pdfeval(
-                t_exp, 0, numeric_limits<double>::infinity(), r);
+                double x = (j_exp + rn) / num_samples_exp;
+                auto [t_exp, pdf_t_exp] = exponential_sampling(x, sigma_t[i]);
+                auto [S_phi_exp, S_E_exp] = PBDEvalSample(r, t_exp, i);
+                double pdf_t_equi = equiangular_sampling_pdfeval(
+                    t_exp, 0, numeric_limits<double>::infinity(), r);
 
-            double w_t_exp_MIS =
-                weight.r * num_samples_exp * pdf_t_exp /
-                ((1 - weight.r) * num_samples_equi * pdf_t_equi +
-                 weight.r * num_samples_exp * pdf_t_exp);
+                double w_t_exp_MIS =
+                    weight[i] * double(num_samples_exp) * pdf_t_exp /
+                    ((1 - weight[i]) * double(num_samples_equi) * pdf_t_equi +
+                     weight[i] * double(num_samples_exp) * pdf_t_exp);
 
-            KP_phi_exp = KP_phi_exp + S_phi_exp * w_t_exp_MIS / pdf_t_exp;
-            KP_E_exp = KP_E_exp + S_E_exp * w_t_exp_MIS / pdf_t_exp;
+                KP_phi_exp[i] =
+                    KP_phi_exp[i] + S_phi_exp * w_t_exp_MIS / pdf_t_exp;
+                KP_E_exp[i] = KP_E_exp[i] + S_E_exp * w_t_exp_MIS / pdf_t_exp;
+            }
+
+            KP_phi_exp[i] = KP_phi_exp[i] / double(num_samples_exp);
+            KP_E_exp = KP_E_exp / double(num_samples_exp);
         }
-
-        KP_phi_exp = KP_phi_exp / num_samples_exp;
-        KP_E_exp = KP_E_exp / num_samples_exp;
     }
     return C_phi * (KP_phi_equi + KP_phi_exp) + C_E * (KP_E_equi + KP_E_exp);
 }
@@ -211,8 +216,8 @@ void BSSRDFTabulator::tabulate(const PBRMetallicMaterial& material) {
     dvec3 RdProfile[BSSRDF_TABLE_SIZE];
     double deltaX = rMax / (BSSRDF_TABLE_SIZE - 1), xi = 0;
     for (int y = 0; y < BSSRDF_TABLE_SIZE; y++) {
-        double Rd = PBDProfile(sigmaA, sigmaT, eta, xi);
-        RdProfile[y] = dvec3(Rd);
+        dvec3 Rd = PBDProfile(sigmaA, sigmaT, eta, xi);
+        RdProfile[y] = Rd;
         xi += deltaX;
     }
     auto interpolateRd = [=](double xi) {

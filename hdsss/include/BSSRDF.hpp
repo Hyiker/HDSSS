@@ -21,4 +21,11 @@ class BSSRDFTabulator {
     std::unique_ptr<loo::Texture2D> generateTexture();
 };
 
+double QC1x2(double eta);
+
+double QC2x3(double eta);
+
+glm::dvec3 PBDProfile(glm::dvec3 sigma_a, glm::dvec3 sigma_t, double eta,
+                      double r);
+
 #endif /* HDSSS_INCLUDE_BSSRDF_HPP */

@@ -137,7 +137,7 @@ class HDSSSApplication : public loo::Application {
     loo::Framebuffer m_translucencyfb;
     struct TranslucencyUniforms {
         float minimalEffect{0.0001f};
-        float maxDistance{0.006f};
+        float maxDistance{0.002f};
     } m_translucencyuniforms;
     std::unique_ptr<loo::Texture2D> m_translucencytex;
 
@@ -155,6 +155,8 @@ class HDSSSApplication : public loo::Application {
     loo::Framebuffer m_ssssfb;
     std::unique_ptr<loo::Texture2D> m_sssstex;
     float m_ssss_pixelareascale{1e-4f};
+    bool m_ssss_samplingmarker{false};
+    glm::ivec2 m_ssss_samplingmarkercenter{0, 0};
     struct RdProfile {
         std::unique_ptr<loo::Texture2D> texture;
         float maxDistance, maxArea;

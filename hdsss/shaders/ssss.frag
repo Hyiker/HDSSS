@@ -21,6 +21,8 @@ layout(binding = 5) uniform sampler2D RdProfile;
 uniform float pixelAreaScale;
 uniform float RdMaxArea;
 uniform float RdMaxDistance;
+uniform bool samplingMarkerEnable;
+uniform ivec2 samplingMarkerCenter;
 
 #define INNER_LAYER_N 2
 #define OUTER_LAYER_CNT 5
@@ -36,18 +38,11 @@ float gridWidths[N_LAYERS] = {1,
                               59.53741807651273,
                               99.22903012752123};
 
-vec3 sampleFromRdProfile(in sampler2D RdProfile, in float RdMaxArea,
-                         in float RdMaxDistance, in float area,
-                         in float distance) {
-    float v = 1.0 - (area / RdMaxArea);
-    float u = distance / RdMaxDistance;
-    return texture(RdProfile, vec2(u, v)).rgb;
-}
-
 float gridIndexToPosition1D(int s, int layer) {
-    return 0.5 * (2 * INNER_LAYER_N + 1) *
-           pow(OUTER_LAYER_CNT / (OUTER_LAYER_CNT - 2), layer - 1) *
-           ((2 * s - 1) / (OUTER_LAYER_CNT - 2) - 1);
+    return 0.5 * float(2 * INNER_LAYER_N + 1) *
+           pow(float(OUTER_LAYER_CNT) / float(OUTER_LAYER_CNT - 2),
+               float(layer - 1)) *
+           (float(2 * s - 1) / float(OUTER_LAYER_CNT - 2) - 1);
 }
 vec4 sampleMipmap(sampler2D tex, vec2 uv, float width) {
     float level = log2(width);
@@ -71,7 +66,7 @@ struct FragData {
 };
 
 void computeLayerEffect(in int layer, in vec2 baseTexSize, in FragData fragData,
-                        out vec3 color) {
+                        in float sssMask, inout vec3 color) {
     float gridWidth = gridWidths[layer],
           gridSize = gridWidth * gridWidth * pixelAreaScale;
     for (int s = 0; s < 16; s++) {
@@ -79,15 +74,22 @@ void computeLayerEffect(in int layer, in vec2 baseTexSize, in FragData fragData,
             vec2(gridIndexToPosition1D(gridShellIndicies[s].x, layer),
                  gridIndexToPosition1D(gridShellIndicies[s].y, layer));
         vec2 uv = fragData.uv + uvOffset / baseTexSize;
-        vec3 position = sampleMipmap(GBufferPosition, uv, baseTexSize.x).rgb;
+        vec3 position = sampleMipmap(GBufferPosition, uv, gridWidth).rgb;
         vec3 transmitted_irradiance =
-            sampleMipmap(TransmittedIrradiance, uv, baseTexSize.x).rgb;
+            sampleMipmap(TransmittedIrradiance, uv, gridWidth).rgb;
 
         color +=
             radianceFactor(vec3(0.0)) *
             sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance, gridSize,
                                 length(fragData.position - position)) *
-            transmitted_irradiance;
+            transmitted_irradiance * sqrt(float(layer)) * PI_INV * 0.25 /
+            CPhi(eta);
+
+        if (samplingMarkerEnable) {
+            ivec2 xy = ivec2(samplingMarkerCenter + uvOffset);
+            if (ivec2(gl_FragCoord.xy) == xy)
+                color = vec3(1, 1, 0);
+        }
     }
 }
 void main() {
@@ -126,13 +128,20 @@ void main() {
                      sampleFromRdProfile(RdProfile, RdMaxArea, RdMaxDistance,
                                          pixelAreaScale,
                                          length(fragPositionWS - position)) *
-                     transmitted_irradiance;
+                     transmitted_irradiance * PI_INV * 0.25 / CPhi(eta);
+            // debug sampling
+            if (samplingMarkerEnable) {
+                ivec2 xy = samplingMarkerCenter +
+                           ivec2(offset * textureSize(GBufferPosition, 0).xy);
+                if (ivec2(gl_FragCoord.xy) == xy)
+                    color = vec3(1, 0, 0);
+            }
         }
     }
     vec2 baseTexSize = textureSize(GBufferPosition, 0).xy;
     // sampling layer 1-9
     for (int i = 1; i < N_LAYERS; i++) {
-        computeLayerEffect(i, baseTexSize, fragData, color);
+        computeLayerEffect(i, baseTexSize, fragData, sssMask, color);
     }
     FragColor = color;
 }
