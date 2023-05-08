@@ -11,6 +11,7 @@
 
 #include <functional>
 #include <string>
+#include "Quad.hpp"
 
 #include "predefs.hpp"
 
@@ -49,6 +50,8 @@ class LOO_EXPORT Application {
     virtual void beforeCleanup(){};
     virtual void afterCleanup(){};
 
+    static Application* getContext() { return context; }
+
     // Application informations
 #ifdef __APPLE__
     // MacOS has different default window size and framebuffer size
@@ -63,7 +66,10 @@ class LOO_EXPORT Application {
 
     float getWindowRatio();
     bool windowDimensionChanged();
-    void setContext(Application* ctx);
+    void setContext(Application* ctx) { context = ctx; }
+
+    void storeViewport();
+    void restoreViewport();
 
    private:
     enum State { stateReady, stateRun, stateExit };
@@ -71,6 +77,8 @@ class LOO_EXPORT Application {
     State state;
 
     GLFWwindow* window;
+    static Application* context;
+    static Quad* globalQuad;
 
     // Time:
     float time;
@@ -92,8 +100,6 @@ class LOO_EXPORT Application {
     bool keyBackward();
     bool keyLeft();
     bool keyRight();
-    void storeViewport();
-    void restoreViewport();
 
     virtual void loop();
     virtual void cleanup();

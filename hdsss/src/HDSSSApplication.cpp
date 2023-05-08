@@ -126,26 +126,8 @@ HDSSSApplication::HDSSSApplication(int width, int height,
                         Shader(SHADOWMAP_FRAG, ShaderType::Fragment)},
       m_deferredshader{Shader(DEFERRED_VERT, ShaderType::Vertex),
                        Shader(DEFERRED_FRAG, ShaderType::Fragment)},
-      m_translucencyshader{Shader(TRANSLUCENCY_VERT, ShaderType::Vertex),
-                           Shader(TRANSLUCENCY_GEOM, ShaderType::Geometry),
-                           Shader(TRANSLUCENCY_FRAG, ShaderType::Fragment)},
-      m_surfelizeshader(
-          {
-              Shader(SURFELIZE_VERT, ShaderType::Vertex),
-              Shader(SURFELIZE_TESC, ShaderType::TessellationControl),
-              Shader(SURFELIZE_TESE, ShaderType::TessellationEvaluation),
-          },
-          {"tePos", "teNormal", "teRadius", "teSigmaT", "teSigmaA"}),
-      m_upscaleshader{
-          Shader(UPSCALE_VERT, ShaderType::Vertex),
-          Shader(UPSCALE_FRAG, ShaderType::Fragment),
-      },
-      m_ssssshader{
-          Shader(SSSS_VERT, ShaderType::Vertex),
-          Shader(SSSS_FRAG, ShaderType::Fragment),
-      },
-      m_globalquad(make_shared<Quad>()),
-      m_finalprocess(getWidth(), getHeight(), m_globalquad) {
+
+      m_finalprocess(getWidth(), getHeight()) {
     ifstream ifs("camera.bin", ios::binary);
     if (!ifs.fail()) {
         ifs.read(reinterpret_cast<char*>(&m_maincam), sizeof(m_maincam));
@@ -175,9 +157,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     initGBuffers();
     initShadowMap();
     initDeferredPass();
-    initTranslucencyPass();
-    initUpscalePass();
-    initSSSSPass();
+    m_hdsss.init();
 
     // final pass related
     { m_finalprocess.init(); }
@@ -279,87 +259,6 @@ void HDSSSApplication::initDeferredPass() {
     m_deferredfb.attachRenderbuffer(m_gbuffers.depthrb, GL_DEPTH_ATTACHMENT);
     panicPossibleGLError();
 }
-
-void HDSSSApplication::initTranslucencyPass() {
-    initSurfelizePass();
-
-    m_translucencyfb.init();
-
-    m_translucencytex = make_unique<Texture2D>();
-    m_translucencytex->init();
-    m_translucencytex->setupStorage(getWidth() >> 2, getHeight() >> 2,
-                                    GL_RGB32F, 1);
-    m_translucencytex->setSizeFilter(GL_LINEAR, GL_LINEAR);
-
-    m_translucencyfb.attachTexture(*m_translucencytex, GL_COLOR_ATTACHMENT0, 0);
-    m_translucencyfb.enableAttachments({GL_COLOR_ATTACHMENT0});
-
-    panicPossibleGLError();
-}
-
-void HDSSSApplication::initSurfelizePass() {
-    GLuint vao, vbo;
-    glGenVertexArrays(1, &vao);
-    glGenTransformFeedbacks(1, &m_surfelizetf);
-    glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_surfelizetf);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(SurfelData) * N_SURFELS_MAX, nullptr,
-                 GL_DYNAMIC_DRAW);
-    panicPossibleGLError();
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-                          (GLvoid*)offsetof(SurfelData, position));
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-                          (GLvoid*)(offsetof(SurfelData, normal)));
-    glEnableVertexAttribArray(1);
-
-    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-                          (GLvoid*)(offsetof(SurfelData, radius)));
-    glEnableVertexAttribArray(2);
-
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-                          (GLvoid*)(offsetof(SurfelData, sigma_t)));
-    glEnableVertexAttribArray(3);
-
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(SurfelData),
-                          (GLvoid*)(offsetof(SurfelData, sigma_a)));
-    glEnableVertexAttribArray(4);
-
-    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, vbo);
-    panicPossibleGLError();
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    m_surfelbuffer.vao = vao;
-    m_surfelbuffer.vbo = vbo;
-    panicPossibleGLError();
-    glGenQueries(1, &m_surfelizequery);
-}
-void HDSSSApplication::initUpscalePass() {
-    m_upscalefb.init();
-    m_upscaletex = make_unique<Texture2D>();
-    m_upscaletex->init();
-    m_upscaletex->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
-    m_upscaletex->setSizeFilter(GL_LINEAR, GL_LINEAR);
-    m_upscalefb.attachTexture(*m_upscaletex, GL_COLOR_ATTACHMENT0, 0);
-    m_upscalefb.enableAttachments({GL_COLOR_ATTACHMENT0});
-    panicPossibleGLError();
-}
-
-void HDSSSApplication::initSSSSPass() {
-    m_ssssfb.init();
-    m_sssstex = make_unique<Texture2D>();
-    m_sssstex->init();
-    m_sssstex->setupStorage(getWidth(), getHeight(), GL_RGB32F, 1);
-    m_sssstex->setSizeFilter(GL_LINEAR, GL_LINEAR);
-    m_ssssfb.attachTexture(*m_sssstex, GL_COLOR_ATTACHMENT0, 0);
-    m_ssssfb.enableAttachments({GL_COLOR_ATTACHMENT0});
-    panicPossibleGLError();
-}
 void HDSSSApplication::saveScreenshot(fs::path filename) const {
     std::vector<unsigned char> pixels(getWidth() * getHeight() * 3);
     glReadPixels(0, 0, getWidth(), getHeight(), GL_RGB, GL_UNSIGNED_BYTE,
@@ -417,7 +316,7 @@ void HDSSSApplication::gui() {
             if (ImGui::CollapsingHeader("High distance SSS info",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 string postfix = "";
-                int nSurfel = getSurfelCount();
+                int nSurfel = m_hdsss.getSurfelCount();
                 if (nSurfel > 1000) {
                     nSurfel /= 1000;
                     postfix = "k";
@@ -461,24 +360,24 @@ void HDSSSApplication::gui() {
             if (ImGui::CollapsingHeader("HDSSS options",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
-
-                ImGui::SliderFloat("Splatting strength", &m_splattingstrength,
-                                   1.0f, 1e2f, "%.1f",
-                                   ImGuiSliderFlags_Logarithmic);
+                auto& options = m_hdsss.options;
+                ImGui::SliderFloat("Splatting strength",
+                                   &options.splattingStrength, 1.0f, 1e2f,
+                                   "%.1f", ImGuiSliderFlags_Logarithmic);
                 ImGui::SliderFloat("Splatting minEffect",
-                                   &m_translucencyuniforms.minimalEffect,
-                                   0.0001, 1.0, "%.4f",
+                                   &options.minimalEffect, 0.0001, 1.0, "%.4f",
                                    ImGuiSliderFlags_Logarithmic);
                 ImGui::SliderFloat("Splatting maxDistance",
-                                   &m_translucencyuniforms.maxDistance, 0.0001,
-                                   5.0, "%.4f", ImGuiSliderFlags_Logarithmic);
-
-                ImGui::Checkbox("SSSS marker", &m_ssss_samplingmarker);
-                m_ssss_samplingmarkercenter.x = io.MousePos.x;
-                m_ssss_samplingmarkercenter.y = getHeight() - io.MousePos.y;
-                ImGui::SliderFloat("SSSS area scale", &m_ssss_pixelareascale,
-                                   1e-5, 1.0, "%.5f",
+                                   &options.maxDistance, 0.0001, 5.0, "%.4f",
                                    ImGuiSliderFlags_Logarithmic);
+
+                ImGui::Checkbox("SSSS marker", &options.ssssSamplingMarker);
+                options.ssssSamplingMarkerCenter.x = io.MousePos.x;
+                options.ssssSamplingMarkerCenter.y =
+                    getHeight() - io.MousePos.y;
+                ImGui::SliderFloat("SSSS area scale",
+                                   &options.ssssPixelAreaScale, 1e-5, 1.0,
+                                   "%.5f", ImGuiSliderFlags_Logarithmic);
 
                 ImGui::TextWrapped(
                     "Below fields only effect materials with SSS masks");
@@ -498,9 +397,10 @@ void HDSSSApplication::gui() {
         float h_img = h * 0.2,
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
-        vector<GLuint> textures{
-            m_gbuffers.normal->getId(), m_transmitted_irradiance->getId(),
-            m_sssstex->getId(), m_rdprofile.texture->getId()};
+        vector<GLuint> textures{m_gbuffers.normal->getId(),
+                                m_transmitted_irradiance->getId(),
+                                m_hdsss.getSSSSResult().getId(),
+                                m_hdsss.getUpscaleResult().getId()};
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -517,8 +417,9 @@ void HDSSSApplication::gui() {
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
     m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
-                          *m_upscaletex, *m_sssstex, *m_gbuffers.buffer3,
-                          *m_skyboxresult, m_finalpassoptions);
+                          m_hdsss.getUpscaleResult(), m_hdsss.getSSSSResult(),
+                          *m_gbuffers.buffer3, *m_skyboxresult,
+                          m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -541,12 +442,12 @@ void HDSSSApplication::convertMaterial() {
                         *static_pointer_cast<PBRMetallicMaterial>(pbrMaterial));
                     tabulator.save(mesh->name + "_tabulated.txt");
                 }
-                m_rdprofile.texture = tabulator.generateTexture();
-                m_rdprofile.maxArea = tabulator.maxArea;
-                m_rdprofile.maxDistance = tabulator.maxDistance;
-                LOG(INFO) << "Precompute table max area: "
-                          << m_rdprofile.maxArea
-                          << " max distance: " << m_rdprofile.maxDistance;
+                auto& rdprofile = m_hdsss.rdProfile;
+                rdprofile.texture = tabulator.generateTexture();
+                rdprofile.maxArea = tabulator.maxArea;
+                rdprofile.maxDistance = tabulator.maxDistance;
+                LOG(INFO) << "Precompute table max area: " << rdprofile.maxArea
+                          << " max distance: " << rdprofile.maxDistance;
             }
             mesh->material = pbrMaterial;
 #else
@@ -651,7 +552,7 @@ void HDSSSApplication::deferredPass() {
     }
 
     glDisable(GL_DEPTH_TEST);
-    m_globalquad->draw();
+    Quad::globalQuad().draw();
 
     m_deferredfb.enableAttachments({GL_COLOR_ATTACHMENT3});
     glClearColor(0.f, 0.f, 0.f, 0.0f);
@@ -659,124 +560,6 @@ void HDSSSApplication::deferredPass() {
     glEnable(GL_DEPTH_TEST);
     skyboxPass();
     m_gbufferfb.unbind();
-}
-
-void HDSSSApplication::surfelizePass() {
-    m_translucencyfb.bind();
-    glBeginQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN, m_surfelizequery);
-    logPossibleGLError();
-    glEnable(GL_RASTERIZER_DISCARD);
-
-    m_surfelizeshader.use();
-
-    glPatchParameteri(GL_PATCH_VERTICES, 3);
-    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_surfelizetf);
-    glBeginTransformFeedback(GL_POINTS);
-    m_scene.draw(
-        m_surfelizeshader,
-        [this](const auto& scene, const auto& mesh) {
-            m_mvp.model = scene.getModelMatrix() * mesh.objectMatrix;
-            m_mvpbuffer.updateData(offsetof(MVP, model), sizeof(m_mvp.model),
-                                   &m_mvp.model);
-        },
-        GL_FILL, DRAW_FLAG_TESSELLATION);
-    glEndTransformFeedback();
-    glFlush();
-    glEndQuery(GL_TRANSFORM_FEEDBACK_PRIMITIVES_WRITTEN);
-    glGetQueryObjectuiv(m_surfelizequery, GL_QUERY_RESULT,
-                        (GLuint*)&m_surfelcount);
-    glDisable(GL_RASTERIZER_DISCARD);
-    m_translucencyfb.unbind();
-    panicPossibleGLError();
-}
-
-void HDSSSApplication::splattingPass() {
-    m_translucencyfb.bind();
-    storeViewport();
-    glViewport(0, 0, getWidth() >> 2, getHeight() >> 2);
-    clear();
-    glEnable(GL_BLEND);
-    glEnable(GL_PROGRAM_POINT_SIZE);
-    glDisable(GL_DEPTH_TEST);
-    glBlendFunc(GL_ONE, GL_ONE);
-    m_translucencyshader.use();
-    if (getSurfelCount()) {
-        m_translucencyshader.setUniform("cameraPos", m_maincam.getPosition());
-        m_translucencyshader.setUniform("viewMatrix",
-                                        m_maincam.getViewMatrix());
-        m_translucencyshader.setUniform("projectionMatrix",
-                                        m_maincam.getProjectionMatrix());
-        m_translucencyshader.setUniform("strength", m_splattingstrength);
-        m_translucencyshader.setUniform("fov", m_maincam.m_fov);
-        m_translucencyshader.setUniform(
-            "framebufferDeviceStep.resolution",
-            glm::ivec2(getWidth() >> 2, getHeight() >> 2));
-        m_translucencyshader.setUniform("lightSpaceMatrix",
-                                        m_lights[0].getLightSpaceMatrix());
-        m_translucencyshader.setUniform("minimalEffect",
-                                        m_translucencyuniforms.minimalEffect);
-        m_translucencyshader.setUniform("maxDistance",
-                                        m_translucencyuniforms.maxDistance);
-
-        m_translucencyshader.setUniform("RdMaxArea", m_rdprofile.maxArea);
-        m_translucencyshader.setUniform("RdMaxDistance",
-                                        m_rdprofile.maxDistance);
-        m_translucencyshader.setTexture(0, *m_gbuffers.position);
-        m_translucencyshader.setTexture(1, *m_gbuffers.normal);
-        m_translucencyshader.setTexture(2, *m_mainlightshadowmap);
-        m_translucencyshader.setTexture(3, *m_rdprofile.texture);
-        glBindVertexArray(m_surfelbuffer.vao);
-        glDrawArrays(GL_POINTS, 0, getSurfelCount());
-        logPossibleGLError();
-    }
-    glDisable(GL_BLEND);
-    restoreViewport();
-    m_translucencyfb.unbind();
-}
-
-void HDSSSApplication::translucencyPass() {
-    surfelizePass();
-
-    panicPossibleGLError();
-
-    splattingPass();
-}
-
-void HDSSSApplication::upscaleTranslucencyPass() {
-    m_upscalefb.bind();
-    m_upscaleshader.use();
-    m_upscaleshader.setTexture(0, *m_translucencytex);
-    m_globalquad->draw();
-    m_upscalefb.unbind();
-}
-
-void HDSSSApplication::SSSSPass() {
-    m_gbuffers.position->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-    m_gbuffers.normal->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-    m_transmitted_irradiance->setSizeFilter(GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
-
-    m_gbuffers.position->generateMipmap();
-    m_gbuffers.normal->generateMipmap();
-    m_transmitted_irradiance->generateMipmap();
-    m_ssssfb.bind();
-    m_ssssshader.use();
-    m_ssssshader.setUniform("pixelAreaScale", m_ssss_pixelareascale);
-    m_ssssshader.setUniform("RdMaxArea", m_rdprofile.maxArea);
-    m_ssssshader.setUniform("RdMaxDistance", m_rdprofile.maxDistance);
-    m_ssssshader.setUniform("samplingMarkerEnable", m_ssss_samplingmarker);
-    m_ssssshader.setUniform("samplingMarkerCenter",
-                            m_ssss_samplingmarkercenter);
-    m_ssssshader.setUniform("cameraPos", m_maincam.getPosition());
-    m_ssssshader.setTexture(0, *m_gbuffers.position);
-    m_ssssshader.setTexture(1, *m_gbuffers.normal);
-    m_ssssshader.setTexture(2, *m_gbuffers.buffer3);
-    m_ssssshader.setTexture(3, *m_gbuffers.buffer4);
-    m_ssssshader.setTexture(4, *m_transmitted_irradiance);
-
-    m_ssssshader.setTexture(5, *m_rdprofile.texture);
-
-    m_globalquad->draw();
-    m_ssssfb.unbind();
 }
 
 void HDSSSApplication::scene() {
@@ -839,11 +622,15 @@ void HDSSSApplication::loop() {
 
         deferredPass();
 
-        translucencyPass();
+        m_hdsss.translucencyPass(m_scene, m_mvp, m_mvpbuffer, m_lights[0],
+                                 *m_gbuffers.position, *m_gbuffers.normal,
+                                 *m_mainlightshadowmap);
 
-        upscaleTranslucencyPass();
+        m_hdsss.upscaleTranslucencyPass();
 
-        SSSSPass();
+        m_hdsss.SSSSPass(*m_gbuffers.position, *m_gbuffers.normal,
+                         *m_gbuffers.buffer3, *m_gbuffers.buffer4,
+                         *m_transmitted_irradiance);
 
         finalScreenPass();
 

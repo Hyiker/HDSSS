@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 #include "BSSRDF.hpp"
+#include "HDSSS.hpp"
+#include "Transforms.hpp"
 
 #include "FinalProcess.hpp"
 #include "constants.hpp"
@@ -29,18 +31,12 @@ class HDSSSApplication : public loo::Application {
     loo::Camera& getCamera() { return m_maincam; }
     void afterCleanup() override;
     void convertMaterial();
+    void clear();
 
    private:
     void initGBuffers();
     void initShadowMap();
     void initDeferredPass();
-
-    void initTranslucencyPass();
-    void initSurfelizePass();
-
-    void initUpscalePass();
-
-    void initSSSSPass();
 
     void loop() override;
     void gui();
@@ -53,29 +49,11 @@ class HDSSSApplication : public loo::Application {
     // third pass: deferred pass(illumination)
     void deferredPass();
 
-    // fourth pass: translucency effect
-    void translucencyPass();
-    // fourth pass: subpass 1
-    void surfelizePass();
-    // fourth pass: subpass 2
-    void splattingPass();
-
-    // fifth pass: upscale transluency effect
-    void upscaleTranslucencyPass();
-    // sixth pass: screen space subsurface scattering effect
-    void SSSSPass();
     // seventh pass: merge all effects
     void finalScreenPass();
-    void clear();
     void keyboard();
     void mouse();
     void saveScreenshot(std::filesystem::path filename) const;
-    struct MVP {
-        glm::mat4 model;
-        glm::mat4 view;
-        glm::mat4 projection;
-        glm::mat4 normalMatrix;
-    };
     MVP m_mvp;
 
     loo::ShaderProgram m_baseshader, m_skyboxshader;
@@ -121,53 +99,13 @@ class HDSSSApplication : public loo::Application {
     std::unique_ptr<loo::Texture2D> m_reflected_radiance;
     // skybox
     std::unique_ptr<loo::Texture2D> m_skyboxresult;
-    // translucent pass
-    loo::ShaderProgram m_translucencyshader;
 
-    loo::ShaderProgram m_surfelizeshader;
-    int m_surfelcount{0};
-
-    int getSurfelCount() const { return m_surfelcount; }
-
-    GLuint m_surfelizetf, m_surfelizequery;
-    struct SurfelBuffer {
-        GLuint vao;
-        GLuint vbo;
-    } m_surfelbuffer;
-    loo::Framebuffer m_translucencyfb;
-    struct TranslucencyUniforms {
-        float minimalEffect{0.0001f};
-        float maxDistance{0.0015f};
-    } m_translucencyuniforms;
-    std::unique_ptr<loo::Texture2D> m_translucencytex;
-
-    // scene surfelize
-    loo::Framebuffer m_surfelizefb;
-    float m_surfelizescale{0.00085f}, m_splattingstrength{1.0f};
-
-    // upscale pass
-    loo::ShaderProgram m_upscaleshader;
-    loo::Framebuffer m_upscalefb;
-    std::unique_ptr<loo::Texture2D> m_upscaletex;
-
-    // ssss pass
-    loo::ShaderProgram m_ssssshader;
-    loo::Framebuffer m_ssssfb;
-    std::unique_ptr<loo::Texture2D> m_sssstex;
-    float m_ssss_pixelareascale{1e-4f};
-    bool m_ssss_samplingmarker{false};
-    glm::ivec2 m_ssss_samplingmarkercenter{0, 0};
-    struct RdProfile {
-        std::unique_ptr<loo::Texture2D> texture;
-        float maxDistance, maxArea;
-    } m_rdprofile;
-    // screen quad
-    std::shared_ptr<loo::Quad> m_globalquad;
+    HDSSS m_hdsss;
 
     // process
     FinalProcess m_finalprocess;
 
-    bool m_wireframe{};
+    bool m_wireframe{false};
     bool m_enablenormal{true};
     bool m_enableparallax{true};
     bool m_lodvisualize{false};
@@ -175,6 +113,7 @@ class HDSSSApplication : public loo::Application {
 
     FinalPassOptions m_finalpassoptions;
     // float m_displaceintensity{};
+   public:
 };
 
 #endif /* HDSSS_INCLUDE_HDSSSAPPLICATION_HPP */

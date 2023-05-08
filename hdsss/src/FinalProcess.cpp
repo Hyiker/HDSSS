@@ -7,13 +7,11 @@
 #include "shaders/finalScreen.frag.hpp"
 #include "shaders/finalScreen.vert.hpp"
 using namespace loo;
-FinalProcess::FinalProcess(int width, int height,
-                           std::shared_ptr<loo::Quad> quad)
+FinalProcess::FinalProcess(int width, int height)
     : m_shader{{Shader(FINALSCREEN_VERT, GL_VERTEX_SHADER),
                 Shader(FINALSCREEN_FRAG, GL_FRAGMENT_SHADER)}},
       m_width(width),
-      m_height(height),
-      m_quad(quad) {
+      m_height(height) {
     panicPossibleGLError();
 }
 void FinalProcess::init() {
@@ -45,7 +43,7 @@ void FinalProcess::render(const loo::Texture2D& diffuseTexture,
     m_shader.setTexture(4, skyboxTexture);
     m_shader.setTexture(5, GBuffer3);
 
-    m_quad->draw();
+    Quad::globalQuad().draw();
 
     logPossibleGLError();
 }

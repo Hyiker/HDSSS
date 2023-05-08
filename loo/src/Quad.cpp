@@ -1,6 +1,6 @@
 #include "loo/Quad.hpp"
 namespace loo {
-
+Quad* Quad::instance = nullptr;
 Quad::Quad() {
     constexpr float quadVertices[] = {-1.0f, 1.0f, 0.0f, 1.0f,  -1.0f, -1.0f,
                                       0.0f,  0.0f, 1.0f, -1.0f, 1.0f,  0.0f,

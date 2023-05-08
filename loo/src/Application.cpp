@@ -23,6 +23,8 @@ namespace loo {
 
 using namespace std;
 
+Application* Application::context = nullptr;
+
 Application::Application(int width, int height, const std::string& title)
     : state(stateReady), width(width), height(height), title(title) {
     initGLFW();
@@ -31,11 +33,8 @@ Application::Application(int width, int height, const std::string& title)
         throw std::runtime_error("Fail to initialize GLAD");
     }
     initImGUI();
-
-    // opengl configuration
-    // glEnable(GL_DEPTH_TEST);  // enable depth-testing
-    // glDepthFunc(
-    //     GL_LESS);  // depth-testing interprets a smaller value as "closer"
+    setContext(this);
+    Quad::initGlobalQuad();
 }
 
 GLFWwindow* Application::getWindow() const {
