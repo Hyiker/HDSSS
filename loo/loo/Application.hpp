@@ -51,6 +51,8 @@ class LOO_EXPORT Application {
     virtual void afterCleanup(){};
 
     static Application* getContext() { return context; }
+    static int getContextWidth() { return context->getWidth(); }
+    static int getContextHeight() { return context->getHeight(); }
 
     // Application informations
 #ifdef __APPLE__

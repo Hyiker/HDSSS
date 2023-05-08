@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "BSSRDF.hpp"
+#include "DeepScreenSpace.hpp"
 #include "HDSSS.hpp"
 #include "Transforms.hpp"
 
@@ -100,7 +101,12 @@ class HDSSSApplication : public loo::Application {
     // skybox
     std::unique_ptr<loo::Texture2D> m_skyboxresult;
 
+    enum class SubsurfaceMethod { HDSSS, DSS };
+    SubsurfaceMethod m_method{SubsurfaceMethod::DSS};
+
     HDSSS m_hdsss;
+
+    DeepScreenSpace m_dss;
 
     // process
     FinalProcess m_finalprocess;

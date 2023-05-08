@@ -158,6 +158,7 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     initShadowMap();
     initDeferredPass();
     m_hdsss.init();
+    m_dss.init();
 
     // final pass related
     { m_finalprocess.init(); }
@@ -313,19 +314,36 @@ void HDSSSApplication::gui() {
                                    m_maincam.getPosition().y,
                                    m_maincam.getPosition().z);
             }
-            if (ImGui::CollapsingHeader("High distance SSS info",
-                                        ImGuiTreeNodeFlags_DefaultOpen)) {
-                string postfix = "";
-                int nSurfel = m_hdsss.getSurfelCount();
-                if (nSurfel > 1000) {
-                    nSurfel /= 1000;
-                    postfix = "k";
+            if (m_method == SubsurfaceMethod::HDSSS) {
+                if (ImGui::CollapsingHeader("High distance SSS info",
+                                            ImGuiTreeNodeFlags_DefaultOpen)) {
+                    string postfix = "";
+                    int nSurfel = m_hdsss.getSurfelCount();
+                    if (nSurfel > 1000) {
+                        nSurfel /= 1000;
+                        postfix = "k";
+                    }
+                    if (nSurfel > 1000) {
+                        nSurfel /= 1000;
+                        postfix = "M";
+                    }
+                    ImGui::Text("Surfel count: %d%s", nSurfel, postfix.c_str());
                 }
-                if (nSurfel > 1000) {
-                    nSurfel /= 1000;
-                    postfix = "M";
+            } else if (m_method == SubsurfaceMethod::DSS) {
+                if (ImGui::CollapsingHeader("Deep Screen Space info",
+                                            ImGuiTreeNodeFlags_DefaultOpen)) {
+                    string postfix = "";
+                    int nSurfel = m_dss.getSurfelCount();
+                    if (nSurfel > 1000) {
+                        nSurfel /= 1000;
+                        postfix = "k";
+                    }
+                    if (nSurfel > 1000) {
+                        nSurfel /= 1000;
+                        postfix = "M";
+                    }
+                    ImGui::Text("Surfel count: %d%s", nSurfel, postfix.c_str());
                 }
-                ImGui::Text("Surfel count: %d%s", nSurfel, postfix.c_str());
             }
         }
     }
@@ -346,7 +364,7 @@ void HDSSSApplication::gui() {
             }
 
             // OpenGL option
-            if (ImGui::CollapsingHeader("OpenGL options",
+            if (ImGui::CollapsingHeader("Render options",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
                 ImGui::Checkbox("Wire frame mode", &m_wireframe);
                 ImGui::Checkbox("Normal mapping", &m_enablenormal);
@@ -355,41 +373,85 @@ void HDSSSApplication::gui() {
                 if (ImGui::Button("Save screenshot")) {
                     m_screenshotflag = true;
                 }
+                ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.5f);
+                if (ImGui::BeginCombo("Subsurface Method",
+                                      m_method == SubsurfaceMethod::HDSSS
+                                          ? "High Distance SS"
+                                          : "Deep Screen Space")) {
+                    if (ImGui::Selectable("High Distance SS",
+                                          m_method == SubsurfaceMethod::HDSSS))
+                        m_method = SubsurfaceMethod::HDSSS;
+                    if (ImGui::Selectable("Deep Screen Space",
+                                          m_method == SubsurfaceMethod::DSS))
+                        m_method = SubsurfaceMethod::DSS;
+                    ImGui::EndCombo();
+                }
             }
+            if (m_method == SubsurfaceMethod::HDSSS) {
+                if (ImGui::CollapsingHeader("HDSSS options",
+                                            ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
+                    auto& options = m_hdsss.options;
+                    ImGui::SliderFloat("Splatting strength",
+                                       &options.splattingStrength, 1.0f, 1e2f,
+                                       "%.1f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("Splatting minEffect",
+                                       &options.minimalEffect, 0.0001, 1.0,
+                                       "%.4f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("Splatting maxDistance",
+                                       &options.maxDistance, 0.0001, 5.0,
+                                       "%.4f", ImGuiSliderFlags_Logarithmic);
 
-            if (ImGui::CollapsingHeader("HDSSS options",
-                                        ImGuiTreeNodeFlags_DefaultOpen)) {
-                ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
-                auto& options = m_hdsss.options;
-                ImGui::SliderFloat("Splatting strength",
-                                   &options.splattingStrength, 1.0f, 1e2f,
-                                   "%.1f", ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Splatting minEffect",
-                                   &options.minimalEffect, 0.0001, 1.0, "%.4f",
-                                   ImGuiSliderFlags_Logarithmic);
-                ImGui::SliderFloat("Splatting maxDistance",
-                                   &options.maxDistance, 0.0001, 5.0, "%.4f",
-                                   ImGuiSliderFlags_Logarithmic);
+                    ImGui::Checkbox("SSSS marker", &options.ssssSamplingMarker);
+                    options.ssssSamplingMarkerCenter.x = io.MousePos.x;
+                    options.ssssSamplingMarkerCenter.y =
+                        getHeight() - io.MousePos.y;
+                    ImGui::SliderFloat("SSSS area scale",
+                                       &options.ssssPixelAreaScale, 1e-5, 1.0,
+                                       "%.5f", ImGuiSliderFlags_Logarithmic);
 
-                ImGui::Checkbox("SSSS marker", &options.ssssSamplingMarker);
-                options.ssssSamplingMarkerCenter.x = io.MousePos.x;
-                options.ssssSamplingMarkerCenter.y =
-                    getHeight() - io.MousePos.y;
-                ImGui::SliderFloat("SSSS area scale",
-                                   &options.ssssPixelAreaScale, 1e-5, 1.0,
-                                   "%.5f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::TextWrapped(
+                        "Below fields only effect materials with SSS masks");
+                    ImGui::Checkbox("Use diffuse texture",
+                                    &m_finalpassoptions.diffuse);
+                    ImGui::Checkbox("Use specular texture",
+                                    &m_finalpassoptions.specular);
+                    ImGui::Checkbox("Use translucency texture",
+                                    &m_finalpassoptions.translucency);
+                    ImGui::Checkbox("Use SSS texture", &m_finalpassoptions.SSS);
 
-                ImGui::TextWrapped(
-                    "Below fields only effect materials with SSS masks");
-                ImGui::Checkbox("Use diffuse texture",
-                                &m_finalpassoptions.diffuse);
-                ImGui::Checkbox("Use specular texture",
-                                &m_finalpassoptions.specular);
-                ImGui::Checkbox("Use translucency texture",
-                                &m_finalpassoptions.translucency);
-                ImGui::Checkbox("Use SSS texture", &m_finalpassoptions.SSS);
+                    ImGui::PopItemWidth();
+                }
+            } else if (m_method == SubsurfaceMethod::DSS) {
+                if (ImGui::CollapsingHeader("Deep Screen Space options",
+                                            ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
+                    auto& options = m_dss.options;
 
-                ImGui::PopItemWidth();
+                    ImGui::SliderFloat("Surfel scale", &options.surfelScale,
+                                       1e-4, 1.5f, "%.4f",
+                                       ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("Splatting strength",
+                                       &options.splattingStrength, 1.0f, 1e2f,
+                                       "%.1f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("Splatting minEffect",
+                                       &options.minimalEffect, 0.0001, 1.0,
+                                       "%.4f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::SliderFloat("Splatting maxDistance",
+                                       &options.maxDistance, 0.0001, 5.0,
+                                       "%.4f", ImGuiSliderFlags_Logarithmic);
+
+                    ImGui::TextWrapped(
+                        "Below fields only effect materials with SSS masks");
+                    ImGui::Checkbox("Use diffuse texture",
+                                    &m_finalpassoptions.diffuse);
+                    ImGui::Checkbox("Use specular texture",
+                                    &m_finalpassoptions.specular);
+                    ImGui::Checkbox("Use DSS texture",
+                                    &m_finalpassoptions.translucency);
+
+                    ImGui::PopItemWidth();
+                }
             }
         }
     }
@@ -397,10 +459,17 @@ void HDSSSApplication::gui() {
         float h_img = h * 0.2,
               w_img = h_img / io.DisplaySize.y * io.DisplaySize.x;
         ImGui::SetNextWindowBgAlpha(1.0f);
-        vector<GLuint> textures{m_gbuffers.normal->getId(),
-                                m_transmitted_irradiance->getId(),
-                                m_hdsss.getSSSSResult().getId(),
-                                m_hdsss.getUpscaleResult().getId()};
+        vector<GLuint> textures;
+        if (m_method == SubsurfaceMethod::HDSSS) {
+            textures = {m_gbuffers.normal->getId(),
+                        m_transmitted_irradiance->getId(),
+                        m_hdsss.getSSSSResult().getId(),
+                        m_hdsss.getUpscaleResult().getId()};
+        } else {
+            textures = {m_dss.getPartitionedNormal(2).getId(),
+                        m_dss.getSplattingResult(0).getId(),
+                        m_dss.getSumUpResult().getId()};
+        }
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
         ImGui::SetNextWindowPos(ImVec2(0, h * 0.8), ImGuiCond_Always);
         if (ImGui::Begin("Textures", nullptr,
@@ -416,10 +485,16 @@ void HDSSSApplication::gui() {
 
 void HDSSSApplication::finalScreenPass() {
     m_finalpassoptions.directOutput = m_lodvisualize;
-    m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
-                          m_hdsss.getUpscaleResult(), m_hdsss.getSSSSResult(),
-                          *m_gbuffers.buffer3, *m_skyboxresult,
-                          m_finalpassoptions);
+    if (m_method == SubsurfaceMethod::HDSSS)
+        m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
+                              m_hdsss.getUpscaleResult(),
+                              m_hdsss.getSSSSResult(), *m_gbuffers.buffer3,
+                              *m_skyboxresult, m_finalpassoptions);
+    else
+        m_finalprocess.render(*m_diffuseresult, *m_reflected_radiance,
+                              m_dss.getSumUpResult(),
+                              Texture2D::getBlackTexture(), *m_gbuffers.buffer3,
+                              *m_skyboxresult, m_finalpassoptions);
 }
 
 void HDSSSApplication::convertMaterial() {
@@ -621,16 +696,25 @@ void HDSSSApplication::loop() {
         shadowMapPass();
 
         deferredPass();
+        if (m_method == SubsurfaceMethod::HDSSS) {
+            m_hdsss.translucencyPass(m_scene, m_mvp, m_mvpbuffer, m_lights[0],
+                                     *m_gbuffers.position, *m_gbuffers.normal,
+                                     *m_mainlightshadowmap);
 
-        m_hdsss.translucencyPass(m_scene, m_mvp, m_mvpbuffer, m_lights[0],
-                                 *m_gbuffers.position, *m_gbuffers.normal,
-                                 *m_mainlightshadowmap);
+            m_hdsss.upscaleTranslucencyPass();
 
-        m_hdsss.upscaleTranslucencyPass();
-
-        m_hdsss.SSSSPass(*m_gbuffers.position, *m_gbuffers.normal,
-                         *m_gbuffers.buffer3, *m_gbuffers.buffer4,
-                         *m_transmitted_irradiance);
+            m_hdsss.SSSSPass(*m_gbuffers.position, *m_gbuffers.normal,
+                             *m_gbuffers.buffer3, *m_gbuffers.buffer4,
+                             *m_transmitted_irradiance);
+        } else if (m_method == SubsurfaceMethod::DSS) {
+            m_dss.shufflePartitionPass(*m_gbuffers.position,
+                                       *m_gbuffers.normal);
+            m_dss.surfelizePass(m_scene, m_maincam, m_mvp, m_mvpbuffer);
+            m_dss.splattingPass(m_maincam, m_lights[0], *m_mainlightshadowmap);
+            m_dss.unshufflePartitionPass();
+            m_dss.blurPass();
+            m_dss.sumUpPass();
+        }
 
         finalScreenPass();
 
