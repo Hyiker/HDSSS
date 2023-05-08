@@ -14,9 +14,10 @@
 
 struct DSSOptions {
     float surfelScale{1.0f};
-    float splattingStrength{1.0f};
+    float splattingStrength{15.0f};
     float minimalEffect{0.001f};
     float maxDistance{0.01f};
+    int debugLayer{0};
 };
 
 class DeepScreenSpace {
@@ -97,10 +98,10 @@ class DeepScreenSpace {
     auto getSplattingResult() const { return m_splattingresult; }
     auto getPartitionedPosition() const { return m_partitionedposition; }
     auto getPartitionedNormal() const { return m_partitionednormal; }
-    const loo::Texture2D& getPartitionedPosition(int layer);
-    const loo::Texture2D& getPartitionedNormal(int layer);
-    const loo::Texture2D& getSplattingResult(int layer, bool unshuffle = false);
-    const loo::Texture2D& getBlurResult(int layer);
+    const loo::Texture2D& getPartitionedPosition();
+    const loo::Texture2D& getPartitionedNormal();
+    const loo::Texture2D& getSplattingResult(bool unshuffle = false);
+    const loo::Texture2D& getBlurResult();
     const auto& getSumUpResult() { return *m_sumuptex; }
 
     DSSOptions options;

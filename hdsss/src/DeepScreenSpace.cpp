@@ -376,38 +376,39 @@ void DeepScreenSpace::sumUpPass() {
     glDisable(GL_BLEND);
 }
 
-const loo::Texture2D& DeepScreenSpace::getPartitionedPosition(int layer) {
-    glCopyImageSubData(
-        m_partitionedposition->getId(), GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer,
-        m_partitionedpositiondebug->getId(), GL_TEXTURE_2D, 0, 0, 0, 0,
-        Application::getContextWidth(), Application::getContextHeight(), 1);
+const loo::Texture2D& DeepScreenSpace::getPartitionedPosition() {
+    glCopyImageSubData(m_partitionedposition->getId(), GL_TEXTURE_2D_ARRAY, 0,
+                       0, 0, options.debugLayer,
+                       m_partitionedpositiondebug->getId(), GL_TEXTURE_2D, 0, 0,
+                       0, 0, Application::getContextWidth(),
+                       Application::getContextHeight(), 1);
     logPossibleGLError();
     return *m_partitionedpositiondebug;
 }
-const loo::Texture2D& DeepScreenSpace::getPartitionedNormal(int layer) {
-    glCopyImageSubData(
-        m_partitionednormal->getId(), GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer,
-        m_partitionednormaldebug->getId(), GL_TEXTURE_2D, 0, 0, 0, 0,
-        Application::getContextWidth(), Application::getContextHeight(), 1);
+const loo::Texture2D& DeepScreenSpace::getPartitionedNormal() {
+    glCopyImageSubData(m_partitionednormal->getId(), GL_TEXTURE_2D_ARRAY, 0, 0,
+                       0, options.debugLayer, m_partitionednormaldebug->getId(),
+                       GL_TEXTURE_2D, 0, 0, 0, 0,
+                       Application::getContextWidth(),
+                       Application::getContextHeight(), 1);
     logPossibleGLError();
     return *m_partitionednormaldebug;
 }
-const loo::Texture2D& DeepScreenSpace::getSplattingResult(int layer,
-                                                          bool unshuffle) {
+const loo::Texture2D& DeepScreenSpace::getSplattingResult(bool unshuffle) {
     glCopyImageSubData(
         unshuffle ? m_unshuffleresult->getId() : m_splattingresult->getId(),
-        GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer, m_splattingresultdebug->getId(),
-        GL_TEXTURE_2D, 0, 0, 0, 0, Application::getContextWidth(),
-        Application::getContextHeight(), 1);
+        GL_TEXTURE_2D_ARRAY, 0, 0, 0, options.debugLayer,
+        m_splattingresultdebug->getId(), GL_TEXTURE_2D, 0, 0, 0, 0,
+        Application::getContextWidth(), Application::getContextHeight(), 1);
     logPossibleGLError();
     return *m_splattingresultdebug;
 }
 
-const loo::Texture2D& DeepScreenSpace::getBlurResult(int layer) {
-    glCopyImageSubData(m_blurer.getBlurResult().getId(), GL_TEXTURE_2D_ARRAY, 0,
-                       0, 0, layer, m_blurresultdebug->getId(), GL_TEXTURE_2D,
-                       0, 0, 0, 0, Application::getContextWidth(),
-                       Application::getContextHeight(), 1);
+const loo::Texture2D& DeepScreenSpace::getBlurResult() {
+    glCopyImageSubData(
+        m_blurer.getBlurResult().getId(), GL_TEXTURE_2D_ARRAY, 0, 0, 0,
+        options.debugLayer, m_blurresultdebug->getId(), GL_TEXTURE_2D, 0, 0, 0,
+        0, Application::getContextWidth(), Application::getContextHeight(), 1);
     logPossibleGLError();
     return *m_blurresultdebug;
 }

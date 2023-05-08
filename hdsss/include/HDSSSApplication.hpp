@@ -102,7 +102,7 @@ class HDSSSApplication : public loo::Application {
     std::unique_ptr<loo::Texture2D> m_skyboxresult;
 
     enum class SubsurfaceMethod { HDSSS, DSS };
-    SubsurfaceMethod m_method{SubsurfaceMethod::DSS};
+    SubsurfaceMethod m_method{SubsurfaceMethod::HDSSS};
 
     HDSSS m_hdsss;
 

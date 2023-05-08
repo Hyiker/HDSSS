@@ -3,6 +3,8 @@
 My non-official implementation of the paper [Interactive Subsurface Scattering for Materials With High Scattering
 Distances](https://viscom.publications.uni-ulm.de/api/uploads/201/cgf2020.pdf).
 
+**Update 2023/05/08** I port [Deep Screen Space](https://resources.mpi-inf.mpg.de/DeepScreenSpace/) to this implementation to deliver a more straightforward contrary with the HDSSS method.
+
 ## Compilation
 
 The project is managed with [XMake](https://xmake.io/), which is a cross-platform build utility. To compile the project, you need to install XMake first. Then, run the following command in the root directory of the project to configure the project(on Windows):
@@ -97,4 +99,10 @@ To be noticed, there is a "Screenshot" button in the GUI, which will save the cu
 
 ## Screenshot
 
+High Distance Subsurface Scattering:
+
 ![dragon1](./images/dragon1.png)
+
+Deep Screen Space Subsurface Scattering:
+
+![dragondss](./images/dragondss.png)

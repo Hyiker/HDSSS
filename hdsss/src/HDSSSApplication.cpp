@@ -427,7 +427,8 @@ void HDSSSApplication::gui() {
                                             ImGuiTreeNodeFlags_DefaultOpen)) {
                     ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.45f);
                     auto& options = m_dss.options;
-
+                    ImGui::SliderInt("Debug Layer", &options.debugLayer, 0,
+                                     DSS_N_PARTITION_LAYERS - 1);
                     ImGui::SliderFloat("Surfel scale", &options.surfelScale,
                                        1e-4, 1.5f, "%.4f",
                                        ImGuiSliderFlags_Logarithmic);
@@ -466,8 +467,8 @@ void HDSSSApplication::gui() {
                         m_hdsss.getSSSSResult().getId(),
                         m_hdsss.getUpscaleResult().getId()};
         } else {
-            textures = {m_dss.getPartitionedNormal(2).getId(),
-                        m_dss.getSplattingResult(0).getId(),
+            textures = {m_dss.getPartitionedNormal().getId(),
+                        m_dss.getSplattingResult().getId(),
                         m_dss.getSumUpResult().getId()};
         }
         ImGui::SetNextWindowSize(ImVec2(w_img * textures.size() + 40, h_img));
