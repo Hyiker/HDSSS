@@ -101,8 +101,8 @@ To be noticed, there is a "Screenshot" button in the GUI, which will save the cu
 
 High Distance Subsurface Scattering:
 
-![dragon1](./images/dragon1.png)
+![dragon1](./images/dragon_hdss.png)
 
 Deep Screen Space Subsurface Scattering:
 
-![dragondss](./images/dragondss.png)
+![dragondss](./images/dragon_dss.png)
