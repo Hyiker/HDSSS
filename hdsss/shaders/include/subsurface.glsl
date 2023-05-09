@@ -80,7 +80,7 @@ float fresnelTransmittance(in float cosTheta, in float eta) {
     float g_s = sqrt(pow(eta, 2) + c * c - 1);
     float gmc = g_s - c;
     float gpc = g_s + c;
-    float R = ((gmc / gpc) * (gmc / gpc)) / 2. *
+    float R = ((gmc / gpc) * (gmc / gpc)) / 2 *
               (1 + pow(((c * gpc - 1) / (c * gmc + 1)), 2));
 
     return clamp01(1 - R);

@@ -110,8 +110,9 @@ void main() {
     vec3 sigma_a = texture(GBuffer4, texCoord).rgb;
     vec3 sigma_s = sigma_t - sigma_a;
 
-    const vec3 fragPositionWS = texture(GBufferPosition, texCoord).rgb;
-    const vec3 fragNormalWS = normalize(texture(GBufferNormal, texCoord).rgb);
+    const vec3 fragPositionWS = textureLod(GBufferPosition, texCoord, 0).rgb;
+    const vec3 fragNormalWS =
+        normalize(textureLod(GBufferNormal, texCoord, 0).rgb);
     FragData fragData =
         FragData(fragPositionWS, fragNormalWS, texCoord, sigma_a, sigma_s);
     // sampling layer 0
@@ -120,7 +121,6 @@ void main() {
             vec2 offset = vec2(i, j) * texelSize;
             vec2 uv = texCoord + offset;
             vec3 position = texture(GBufferPosition, uv).rgb;
-            vec3 normal = texture(GBufferNormal, uv).rgb;
             vec3 transmitted_irradiance =
                 texture(TransmittedIrradiance, uv).rgb;
 

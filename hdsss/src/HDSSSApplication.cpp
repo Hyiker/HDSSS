@@ -177,7 +177,7 @@ void HDSSSApplication::initGBuffers() {
 
     m_gbuffers.normal = make_shared<Texture2D>();
     m_gbuffers.normal->init();
-    m_gbuffers.normal->setupStorage(getWidth(), getHeight(), GL_RGB8,
+    m_gbuffers.normal->setupStorage(getWidth(), getHeight(), GL_RGB16F,
                                     mipmapLevel);
     m_gbuffers.normal->setSizeFilter(GL_NEAREST, GL_NEAREST);
 
