@@ -21,7 +21,7 @@ inline char separator() {
 #endif
 }
 void extract_filename(const char* path, char* buffer, size_t buffer_size) {
-    char* filename = strrchr(path, separator());
+    const char* filename = strrchr(path, separator());
     if (filename == NULL) {
         filename = (char*)path;
     } else {
@@ -32,7 +32,8 @@ void extract_filename(const char* path, char* buffer, size_t buffer_size) {
         *dot = '\0';
     }
     int i = 0;
-    for (char* c = filename; *c != '\0' && i < buffer_size - 1; c++, i++) {
+    for (const char* c = filename; *c != '\0' && i < buffer_size - 1;
+         c++, i++) {
         if (*c == '.') {
             buffer[i] = '_';
         } else {
@@ -46,7 +47,7 @@ char* read_file_as_hex(FILE* fp) {
         return NULL;
     }
     size_t buffer_size = 4096;
-    char* buffer = malloc(buffer_size);
+    char* buffer = (char*)malloc(buffer_size);
     if (buffer == NULL) {
         fclose(fp);
         return NULL;
@@ -58,7 +59,7 @@ char* read_file_as_hex(FILE* fp) {
         total_bytes += bytes_read;
         if (total_bytes >= buffer_size) {
             buffer_size += 4096;
-            buffer = realloc(buffer, buffer_size);
+            buffer = (char*)realloc(buffer, buffer_size);
             if (buffer == NULL) {
                 fclose(fp);
                 return NULL;
@@ -66,7 +67,7 @@ char* read_file_as_hex(FILE* fp) {
         }
     }
     fclose(fp);
-    char* result = malloc(RESULT_BUFFER_SIZE);
+    char* result = (char*)malloc(RESULT_BUFFER_SIZE);
     if (result == NULL) {
         free(buffer);
         return NULL;

@@ -6,6 +6,10 @@ target("spv2hpp")
     add_files("spv2hpp.c")
     set_languages("c11")
     add_defines("_CRT_SECURE_NO_WARNINGS")
+
+    set_policy("build.warning", true)
+    set_warnings("allextra")
+
     set_policy('build.across_targets_in_parallel', false)
 
     after_build(function (target)
