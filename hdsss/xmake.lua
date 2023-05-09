@@ -56,7 +56,7 @@ target("HDSSSlib")
     add_deps("loo", "spv2hpp")
 
     add_includedirs("include", {public = true})
-    set_languages("c11", "cxx20", {public = true})
+    set_languages("c11", "cxx17", {public = true})
     set_rules("glsl2hpp", {outputdir = "hdsss/include/shaders", defines = {"MATERIAL_PBR"}})
     add_files("shaders/*.*", "src/*.cpp")
     remove_files("src/main.cpp")

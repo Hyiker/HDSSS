@@ -7,7 +7,6 @@
 
 #include <assimp/Importer.hpp>
 #include <filesystem>
-#include <format>
 #include <memory>
 #include <string>
 #include <unordered_map>

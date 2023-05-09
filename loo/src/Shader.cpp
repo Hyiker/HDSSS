@@ -11,7 +11,6 @@
 #include <glog/logging.h>
 
 #include <cstdlib>
-#include <format>
 #include <fstream>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
@@ -115,7 +114,7 @@ Shader createShaderFromFile(const std::string& filename, GLenum type) {
         Shader shader(fileContent.data(), type);
         return std::move(shader);
     } catch (ShaderCompileException& e) {
-        LOG(FATAL) << format("Compile error: {}", e.what()) << endl;
+        LOG(FATAL) << "Compile error: " << e.what() << endl;
     }
 }
 

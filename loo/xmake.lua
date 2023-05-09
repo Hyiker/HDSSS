@@ -39,7 +39,7 @@ package("meshoptimizer")
 
 target("loo")
     set_kind("object")
-    set_languages("c11", "cxx20")
+    set_languages("c11", "cxx17")
     add_includedirs(".", {public = true})
 
     add_files("src/*.cpp")

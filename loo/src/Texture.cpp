@@ -19,8 +19,8 @@ static unsigned char* readImageFromFile(const std::string& filename, int* width,
     stbi_set_flip_vertically_on_load(false);
     unsigned char* data = stbi_load(filename.c_str(), width, height, &ncomp, 0);
     if (!data) {
-        LOG(ERROR) << format("Parse {} failed: {}", filename,
-                             stbi_failure_reason());
+        LOG(ERROR) << "Parse " << filename
+                   << "failed: " << stbi_failure_reason();
         return nullptr;
     }
     // TODO: a more elegant way to read srgb texture
@@ -47,8 +47,8 @@ static unsigned char* readImageFromFile(const std::string& filename, int* width,
             *internalFmt = convertToLinear ? GL_SRGB8_ALPHA8 : GL_RGBA8;
             break;
         default:
-            LOG(ERROR) << format("{}: unsupported tex format {}", filename,
-                                 ncomp);
+            LOG(ERROR) << filename << ": unsupported tex format " << ncomp
+                       << " components";
             return nullptr;
     }
     return data;
