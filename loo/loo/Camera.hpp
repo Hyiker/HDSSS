@@ -15,29 +15,30 @@ enum class CameraMovement { FORWARD, BACKWARD, LEFT, RIGHT };
 
 class LOO_EXPORT Camera {
    public:
-    glm::vec3 position;
+    glm::vec3 position{0.f, 0.f, 0.f};
     glm::vec3 front;
     glm::vec3 up;
     glm::vec3 right;
-    glm::vec3 worldUp;
-    float yaw;
-    float pitch;
+    glm::vec3 worldUp{0.f, 1.f, 0.f};
+    float yaw{-90.0f};
+    float pitch{0.0f};
     float speed{0.12f};
     float sensitivity{0.2f};
     float m_znear{0.01f};
     float m_zfar{50.f};
     float m_fov{float(M_PI) / 3.0f};
-    float m_aspect;
+    float m_aspect{4.f / 3.f};
 
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f),
-           glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = -90.0f,
-           float pitch = 0.0f, float aspect = 4.f / 3.f)
-        : position(position),
-          front(glm::vec3(0.0f, 0.0f, -1.0f)),
-          worldUp{up},
-          yaw(yaw),
-          pitch(pitch),
-          m_aspect{aspect} {
+    Camera() { updateCameraVectors(); }
+
+    Camera(glm::vec3 position, glm::vec3 lookat, float fovRad, float zNear,
+           float zFar)
+        : position(position), m_znear(zNear), m_zfar(zFar), m_fov(fovRad) {
+        front = glm::normalize(lookat - position);
+        // compute pitch and yaw
+        pitch = glm::degrees(asin(front.y));
+        yaw = glm::degrees(atan2(front.z, front.x));
+
         updateCameraVectors();
     }
 

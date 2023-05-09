@@ -28,18 +28,56 @@ xmake r HDSSS -s 0.01 -b "D:\\Assets\\skybox" "D:\\Assets\\glTF-Sample-Models-ma
 ## Usage
 
 ```bash
-HDSSS --help 
-Usage: HDSSS [-h] [--scaling VAR] [--skybox VAR] model
-
-Positional arguments:
-  model         Model file path
+Usage: HDSSS [-h] [--model VAR] [--scaling VAR] [--skybox VAR] [--config VAR]
 
 Optional arguments:
   -h, --help    shows help message and exits
   -v, --version prints version information and exits
+  -m, --model   Model file path
   -s, --scaling Scaling factor of the model [default: 1]
   -b, --skybox  Skybox directory, name the six faces as [front|back|left|right|top|bottom].jpg
+  -c, --config  Config file path
 ```
+
+A typical config file looks like [this](./config.json):
+
+```json
+{
+    "camera": {
+        "position": [
+            -0.03,
+            0.02,
+            0.04
+        ],
+        "lookat": [
+            0,
+            0,
+            0
+        ],
+        "fov": 60,
+        "znear": 0.01,
+        "zfar": 50.0
+    },
+    "light": {
+        "direction": [
+            -1,
+            -1,
+            0
+        ],
+        "intensity": 1
+    },
+    "model": {
+        "path": "path to your model",
+        "scale": 0.01,
+        "rotationY": 0
+    },
+    "skybox": {
+        "path": "directory of your skybox textures"
+    }
+}
+```
+
+To be noticed, command line arguments have higher priority and will override the config file.
 
 ### Camera Control
 

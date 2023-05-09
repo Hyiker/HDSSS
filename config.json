@@ -1,0 +1,30 @@
+{
+    "camera": {
+        "position": [
+            -0.03,
+            0.02,
+            0.04
+        ],
+        "lookat": [
+            0,
+            0,
+            0
+        ],
+        "fov": 60,
+        "znear": 0.01,
+        "zfar": 50.0
+    },
+    "light": {
+        "direction": [
+            -1,
+            -1,
+            0
+        ],
+        "intensity": 1
+    },
+    "model": {
+        "path": "path to your model",
+        "scale": 0.01,
+        "rotationY": 0
+    }
+}

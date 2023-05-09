@@ -73,12 +73,12 @@ target("HDSSSlib")
     add_cxflags("/execution-charset:utf-8", "/source-charset:utf-8", {tools = {"clang_cl", "cl"}})
 target_end()
 
-add_requires("argparse 2.9")
+add_requires("argparse 2.9", "nlohmann_json v3.11.2")
 
 target("HDSSS")
     set_kind("binary")
     add_deps("HDSSSlib")
-    add_packages("argparse")
+    add_packages("argparse", "nlohmann_json")
 
     add_files("src/main.cpp")
 

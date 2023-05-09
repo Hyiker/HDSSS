@@ -87,10 +87,9 @@ static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
     myapp->getCamera().processMouseScroll(xOffset, yOffset);
 }
 
-void HDSSSApplication::loadModel(const std::string& filename, float scaling) {
+void HDSSSApplication::loadModel(const std::string& filename,
+                                 glm::mat4 transform) {
     LOG(INFO) << "Loading model from " << filename << endl;
-    glm::mat4 transform = glm::scale(glm::identity<glm::mat4>(),
-                                     glm::vec3(scaling, scaling, scaling));
     auto meshes = createMeshFromFile(filename, transform);
     m_scene.addMeshes(std::move(meshes));
 
@@ -98,11 +97,10 @@ void HDSSSApplication::loadModel(const std::string& filename, float scaling) {
     LOG(INFO) << "Load done" << endl;
 }
 
-void HDSSSApplication::loadGLTF(const std::string& filename, float scaling) {
+void HDSSSApplication::loadGLTF(const std::string& filename,
+                                glm::mat4 transform) {
     LOG(INFO) << "Loading scene from " << filename << endl;
     // TODO: m_scene = createSceneFromFile(filename);
-    glm::mat4 transform = glm::scale(glm::identity<glm::mat4>(),
-                                     glm::vec3(scaling, scaling, scaling));
     auto meshes = createMeshFromFile(filename, transform);
     m_scene.addMeshes(std::move(meshes));
 
@@ -111,6 +109,7 @@ void HDSSSApplication::loadGLTF(const std::string& filename, float scaling) {
 }
 
 HDSSSApplication::HDSSSApplication(int width, int height,
+                                   const HDSSSConfig& config,
                                    const char* skyBoxPrefix)
     : Application(width, height, "High distance subsurface scattering"),
       m_baseshader{Shader(GBUFFER_VERT, ShaderType::Vertex),
@@ -118,7 +117,8 @@ HDSSSApplication::HDSSSApplication(int width, int height,
       m_skyboxshader{Shader(SKYBOX_VERT, ShaderType::Vertex),
                      Shader(SKYBOX_FRAG, ShaderType::Fragment)},
       m_scene(),
-      m_maincam(),
+      m_maincam(config.camera.position, config.camera.lookat, config.camera.fov,
+                config.camera.zNear, config.camera.zFar),
       m_mvpbuffer(0, sizeof(MVP)),
       m_lightsbuffer(SHADER_BINDING_LIGHTS,
                      sizeof(ShaderLight) * SHADER_LIGHTS_MAX + sizeof(GLint)),
@@ -128,11 +128,6 @@ HDSSSApplication::HDSSSApplication(int width, int height,
                        Shader(DEFERRED_FRAG, ShaderType::Fragment)},
 
       m_finalprocess(getWidth(), getHeight()) {
-    ifstream ifs("camera.bin", ios::binary);
-    if (!ifs.fail()) {
-        ifs.read(reinterpret_cast<char*>(&m_maincam), sizeof(m_maincam));
-    }
-    ifs.close();
     if (skyBoxPrefix) {
         // skybox setup
         auto skyboxFilenames = TextureCubeMap::builder()
@@ -150,8 +145,9 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     }
     // scene light
     {
-        m_lights.push_back(
-            createDirectionalLight(glm::vec3(-1, -1, 0), glm::vec3(1, 1, 1)));
+        m_lights.push_back(createDirectionalLight(config.light.direction,
+                                                  config.light.color,
+                                                  config.light.intensity));
     }
 
     initGBuffers();
@@ -765,8 +761,4 @@ void HDSSSApplication::loop() {
     gui();
 }
 
-void HDSSSApplication::afterCleanup() {
-    ofstream ofs("camera.bin", ios::binary);
-    ofs.write((char*)&m_maincam, sizeof(Camera));
-    ofs.close();
-}
+void HDSSSApplication::afterCleanup() {}

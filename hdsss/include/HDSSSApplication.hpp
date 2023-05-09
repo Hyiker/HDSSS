@@ -22,13 +22,35 @@
 
 #include "FinalProcess.hpp"
 #include "constants.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
+#include "glm/trigonometric.hpp"
+
+struct HDSSSConfig {
+    struct CameraConfig {
+        glm::vec3 position{glm::vec3(0.0f, 0.0f, 0.0f)};
+        glm::vec3 lookat{glm::vec3(0.0f, 0.0f, -1.0f)};
+        float fov{glm::radians(60.0f)};
+        float zNear{0.01f};
+        float zFar{50.0f};
+    } camera;
+    struct LightConfig {
+        glm::vec3 direction{glm::vec3(-1.0f, -1.0f, 0.0f)};
+        glm::vec3 color{glm::vec3(1.0f)};
+        float intensity{1.0f};
+    } light;
+    struct ModelConfig {
+        glm::mat4 transform{glm::identity<glm::mat4>()};
+    } model;
+};
 
 class HDSSSApplication : public loo::Application {
    public:
-    HDSSSApplication(int width, int height, const char* skyBoxPrefix = nullptr);
+    HDSSSApplication(int width, int height, const HDSSSConfig& config,
+                     const char* skyBoxPrefix = nullptr);
     // only load model
-    void loadModel(const std::string& filename, float scaling = 1.0);
-    void loadGLTF(const std::string& filename, float scaling = 1.0);
+    void loadModel(const std::string& filename, glm::mat4 transform);
+    void loadGLTF(const std::string& filename, glm::mat4 transform);
     loo::Camera& getCamera() { return m_maincam; }
     void afterCleanup() override;
     void convertMaterial();
