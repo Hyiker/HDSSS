@@ -533,6 +533,31 @@ void HDSSSApplication::convertMaterial() {
 #endif
         }
     }
+    auto& rdprofile = m_hdsss.rdProfile;
+    if (!rdprofile.texture) {
+        LOG(WARNING) << "No material found, use default "
+                        "subsurface material instead";
+        // no material exists, use default BSSRDF material
+        BSSRDFTabulator tabulator;
+        CHECK_GT(m_scene.getMeshes().size(), 0);
+        auto& mesh = m_scene.getMeshes()[0];
+        mesh->material = PBRMetallicMaterial::getDefaultSubsurface();
+        auto pbrMaterial = mesh->material;
+        fs::path savedTablet = mesh->name + "_tabulated.txt";
+        if (fs::exists(savedTablet)) {
+            LOG(INFO) << "Loading tabulated data from " << savedTablet;
+            tabulator.read(savedTablet.string());
+        } else {
+            tabulator.tabulate(*PBRMetallicMaterial::getDefaultSubsurface());
+            tabulator.save(mesh->name + "_tabulated.txt");
+        }
+        auto& rdprofile = m_hdsss.rdProfile;
+        rdprofile.texture = tabulator.generateTexture();
+        rdprofile.maxArea = tabulator.maxArea;
+        rdprofile.maxDistance = tabulator.maxDistance;
+        LOG(INFO) << "Precompute table max area: " << rdprofile.maxArea
+                  << " max distance: " << rdprofile.maxDistance;
+    }
 }
 
 void HDSSSApplication::skyboxPass() {

@@ -35,7 +35,21 @@ shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefault() {
     }
     return defaultMaterial;
 }
+
+shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefaultSubsurface() {
+    if (!defaultSubsurfaceMaterial) {
+        const vec3 marblesigmaA = vec3(0.0021, 0.0041, 0.0071),
+                   marblesigmaS = vec3(2.19, 2.62, 2.00);
+        defaultSubsurfaceMaterial = make_shared<PBRMetallicMaterial>(
+            vec3(1.0), 0.0, 0.5, marblesigmaA + marblesigmaS, marblesigmaA,
+            0.8);
+    }
+    return defaultSubsurfaceMaterial;
+}
+
 shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::defaultMaterial = nullptr;
+shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::defaultSubsurfaceMaterial =
+    nullptr;
 unique_ptr<UniformBuffer> PBRMetallicMaterial::uniformBuffer = nullptr;
 
 std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(

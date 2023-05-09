@@ -30,6 +30,7 @@ struct ShaderPBRMetallicMaterial {
 class PBRMetallicMaterial : public loo::Material {
     ShaderPBRMetallicMaterial m_shadermaterial;
     static std::shared_ptr<PBRMetallicMaterial> defaultMaterial;
+    static std::shared_ptr<PBRMetallicMaterial> defaultSubsurfaceMaterial;
     // global uniform buffer for SimpleMaterial
     static std::unique_ptr<loo::UniformBuffer> uniformBuffer;
 
@@ -49,6 +50,7 @@ class PBRMetallicMaterial : public loo::Material {
         }
     }
     static std::shared_ptr<PBRMetallicMaterial> getDefault();
+    static std::shared_ptr<PBRMetallicMaterial> getDefaultSubsurface();
     void bind(const loo::ShaderProgram& sp) override;
     std::shared_ptr<loo::Texture2D> baseColorTex{};
     std::shared_ptr<loo::Texture2D> occlusionTex{};
