@@ -27,7 +27,8 @@ void extract_filename(const char* path, char* buffer, size_t buffer_size) {
     } else {
         filename++;
     }
-    char* dot = strrchr(filename, '.');
+    const char* dot_const = strrchr(filename, '.');
+    char* dot = const_cast<char*>(dot_const);
     if (dot != NULL) {
         *dot = '\0';
     }

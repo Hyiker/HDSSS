@@ -3,8 +3,8 @@ add_rules("mode.debug", "mode.release")
 
 target("spv2hpp")
     set_kind("binary")
-    add_files("spv2hpp.c")
-    set_languages("c11")
+    add_files("spv2hpp.cpp")
+    set_languages("cxx17")
     add_defines("_CRT_SECURE_NO_WARNINGS")
 
     set_policy("build.warning", true)
