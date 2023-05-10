@@ -1,5 +1,5 @@
-#ifndef HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL
-#define HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL
+#ifndef HDSSS_SHADERS_INCLUDE_LIGHTING_HPP
+#define HDSSS_SHADERS_INCLUDE_LIGHTING_HPP
 #include "./math.glsl"
 struct ShaderLight {
     // spot, point
@@ -42,10 +42,11 @@ float DistributionGGX(in vec3 N, in float roughness, in vec3 H) {
 
     float nom = a2;
     float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = denom * denom;
+    denom = PI * denom * denom;
 
-    return roughness;
+    return nom / denom;
 }
+
 vec3 FresnelSchlickApprox(in vec3 F0, in vec3 V, in vec3 H) {
     float VoH = max(0.001, dot(V, H));
     float F = pow(1.0 - VoH, 5.0);
@@ -83,6 +84,16 @@ float PBRCookTorranceBRDF(in SurfaceParamsPBRMetallicRoughness surface,
 //         3.1415926;
 //     return f_diff;
 // }
+
+vec3 SpecularStrength(in vec3 N, in float roughness, in vec3 L, in vec3 H) {
+    float nh2 = sqr(clamp01(dot(N, H)));
+    float lh2 = sqr(clamp01(dot(L, H)));
+    float r2 = sqr(roughness);
+    float d2 = sqr(nh2 * (r2 - 1.0) + 1.00001);
+    float normalization = roughness * 4.0 + 2.0;
+    return r2 / (d2 * max(vec3(0.1), lh2) * normalization);
+}
+
 void computePBRMetallicRoughnessLocalLighting(
     in SurfaceParamsPBRMetallicRoughness surface, in ShaderLight light,
     in vec3 V, in vec3 L, in float intensity, out vec3 diffuse,
@@ -98,7 +109,8 @@ void computePBRMetallicRoughnessLocalLighting(
     vec3 kD = (1.0 - F) * (1.0 - surface.metallic);
     vec3 radiance = light.color.rgb * intensity;
     diffuse = kD * baseColor * radiance * NdotL * PI_INV;
-    specular = F * PBRCookTorranceBRDF(surface, light, L) * radiance * NdotL;
+    // specular = PBRCookTorranceBRDF(surface, light, L) * radiance;
+    specular = SpecularStrength(N, surface.roughness, L, H) * radiance * 0.02;
 }
 
 void computeBlinnPhongLocalLighting(in SurfaceParamsBlinnPhong surfaceParams,
@@ -154,4 +166,4 @@ float computeShadow(in mat4 lightMatrix, in sampler2D shadowMap,
     return shadow / float(PCF_KERNEL_SIZE * PCF_KERNEL_SIZE);
 }
 
-#endif /* HDSSS_SHADERS_INCLUDE_LIGHTING_GLSL */
+#endif /* HDSSS_SHADERS_INCLUDE_LIGHTING_HPP */

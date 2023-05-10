@@ -8,7 +8,7 @@
 
 struct FinalPassOptions {
     bool diffuse{false};
-    bool specular{false};
+    bool specular{true};
     bool translucency{true};
     bool SSS{true};
     bool directOutput{false};

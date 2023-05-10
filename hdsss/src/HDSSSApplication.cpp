@@ -12,6 +12,8 @@
 #include <vector>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
+#include <functional>
+#include <glm/gtx/hash.hpp>
 #include "PBRMaterials.hpp"
 #include "SimpleMaterial.hpp"
 
@@ -45,6 +47,8 @@
 #include "glm/ext.hpp"
 using namespace loo;
 using namespace std;
+using namespace glm;
+
 namespace fs = std::filesystem;
 
 static constexpr int SHADOWMAP_RESOLUION[2]{2048, 2048};
@@ -462,7 +466,7 @@ void HDSSSApplication::gui() {
         vector<GLuint> textures;
         if (m_method == SubsurfaceMethod::HDSSS) {
             textures = {m_gbuffers.normal->getId(),
-                        m_transmitted_irradiance->getId(),
+                        m_hdsss.rdProfile.texture->getId(),
                         m_hdsss.getSSSSResult().getId(),
                         m_hdsss.getUpscaleResult().getId()};
         } else {
@@ -508,14 +512,24 @@ void HDSSSApplication::convertMaterial() {
             if (pbrMaterial->getShaderMaterial().sigmaARoughness.r != 0.0f) {
 
                 BSSRDFTabulator tabulator;
-                fs::path savedTablet = mesh->name + "_tabulated.txt";
+                auto shaderMaterial = pbrMaterial->getShaderMaterial();
+                vec3 sigmaA(shaderMaterial.sigmaARoughness.r,
+                            shaderMaterial.sigmaARoughness.g,
+                            shaderMaterial.sigmaARoughness.b),
+                    sigmaT(shaderMaterial.transmissionSigmaT.g,
+                           shaderMaterial.transmissionSigmaT.b,
+                           shaderMaterial.transmissionSigmaT.a);
+                auto vec3Hash = std::hash<vec3>();
+                fs::path savedTablet = to_string(vec3Hash(sigmaA)) + "_" +
+                                       to_string(vec3Hash(sigmaT)) +
+                                       "_tabulated.txt";
                 if (fs::exists(savedTablet)) {
                     LOG(INFO) << "Loading tabulated data from " << savedTablet;
                     tabulator.read(savedTablet.string());
                 } else {
                     tabulator.tabulate(
                         *static_pointer_cast<PBRMetallicMaterial>(pbrMaterial));
-                    tabulator.save(mesh->name + "_tabulated.txt");
+                    tabulator.save(savedTablet.string());
                 }
                 auto& rdprofile = m_hdsss.rdProfile;
                 rdprofile.texture = tabulator.generateTexture();
@@ -542,13 +556,23 @@ void HDSSSApplication::convertMaterial() {
         auto& mesh = m_scene.getMeshes()[0];
         mesh->material = PBRMetallicMaterial::getDefaultSubsurface();
         auto pbrMaterial = mesh->material;
-        fs::path savedTablet = mesh->name + "_tabulated.txt";
+        auto shaderMaterial =
+            PBRMetallicMaterial::getDefaultSubsurface()->getShaderMaterial();
+        vec3 sigmaA(shaderMaterial.sigmaARoughness.r,
+                    shaderMaterial.sigmaARoughness.g,
+                    shaderMaterial.sigmaARoughness.b),
+            sigmaT(shaderMaterial.transmissionSigmaT.g,
+                   shaderMaterial.transmissionSigmaT.b,
+                   shaderMaterial.transmissionSigmaT.a);
+        auto vec3Hash = std::hash<vec3>();
+        fs::path savedTablet = to_string(vec3Hash(sigmaA)) + "_" +
+                               to_string(vec3Hash(sigmaT)) + "_tabulated.txt";
         if (fs::exists(savedTablet)) {
             LOG(INFO) << "Loading tabulated data from " << savedTablet;
             tabulator.read(savedTablet.string());
         } else {
             tabulator.tabulate(*PBRMetallicMaterial::getDefaultSubsurface());
-            tabulator.save(mesh->name + "_tabulated.txt");
+            tabulator.save(savedTablet.string());
         }
         auto& rdprofile = m_hdsss.rdProfile;
         rdprofile.texture = tabulator.generateTexture();

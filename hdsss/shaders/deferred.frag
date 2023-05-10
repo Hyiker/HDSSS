@@ -38,9 +38,8 @@ void main() {
     albedo = texture(GBufferAlbedo, texCoord).rgba;
     transparent = texture(GBuffer3, texCoord).rgb;
     ior = texture(GBuffer3, texCoord).a;
-    vec2 occlusionRoughness = texture(GBuffer4, texCoord).rg;
-    occlusion = occlusionRoughness.r;
-    roughness = occlusionRoughness.g;
+    roughness = texture(GBuffer4, texCoord).a;
+    occlusion = texture(GBuffer5, texCoord).r;
 
     vec3 V = normalize(cameraPosition - positionWS);
     vec3 diffuse_reflect = vec3(0.0), r_radiance = vec3(0.0),
@@ -63,7 +62,7 @@ void main() {
 #ifdef MATERIAL_PBR
         SurfaceParamsPBRMetallicRoughness surface;
         surface.viewDirection = V;
-        surface.normal = normalWS;
+        surface.normal = normalize(normalWS);
         surface.baseColor = albedo.rgb;
         surface.metallic = albedo.a;
         surface.roughness = roughness;

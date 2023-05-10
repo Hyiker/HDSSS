@@ -3,6 +3,7 @@
 #include <corecrt_math_defines.h>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/ext.hpp>
 #include <iostream>
@@ -107,7 +108,7 @@ dvec3 PBDProfile(dvec3 sigma_a, dvec3 sigma_t, double eta, double r) {
         double zr = t;
 
         double dr = sqrt(in_r * in_r + t * t);
-        double dv = sqrt(in_r * in_r + pow(t + pow(2, z_b[channel]), 2));
+        double dv = sqrt(in_r * in_r + pow(t + 2 * z_b[channel], 2));
 
         double kappa = 1 - exp(-2 * sigma_t[channel] * (dr + t));
 
@@ -173,7 +174,7 @@ dvec3 PBDProfile(dvec3 sigma_a, dvec3 sigma_t, double eta, double r) {
             }
 
             KP_phi_exp[i] = KP_phi_exp[i] / double(num_samples_exp);
-            KP_E_exp = KP_E_exp / double(num_samples_exp);
+            KP_E_exp[i] = KP_E_exp[i] / double(num_samples_exp);
         }
     }
     return C_phi * (KP_phi_equi + KP_phi_exp) + C_E * (KP_E_equi + KP_E_exp);
@@ -207,7 +208,7 @@ void BSSRDFTabulator::tabulate(const PBRMetallicMaterial& material) {
         }
     }
     double Amax = M_PI * rMax * rMax;
-    double eta = 1.3;
+    double eta = 1.5;
     maxArea = Amax;
     maxDistance = rMax;
     LOG(INFO) << "rMax: " << rMax << " Amax: " << Amax;
@@ -224,7 +225,10 @@ void BSSRDFTabulator::tabulate(const PBRMetallicMaterial& material) {
         double x = xi / rMax * (BSSRDF_TABLE_SIZE - 1);
         x = std::max(x, 1e-6);
         int x0 = std::floor(x), x1 = std::ceil(x);
+        x0 = std::clamp(x0, 0, BSSRDF_TABLE_SIZE - 1);
+        x1 = std::clamp(x1, 0, BSSRDF_TABLE_SIZE - 1);
         double t = x - x0;
+        t = std::clamp(t, 0.0, 1.0);
         return interpolate(RdProfile[x0], RdProfile[x1], t);
     };
     // step2: precompute the Rd' integral
@@ -259,7 +263,7 @@ void BSSRDFTabulator::tabulate(const PBRMetallicMaterial& material) {
             value /= A;
             m_table[y * BSSRDF_TABLE_SIZE + x] = value;
         }
-        LOG(INFO) << "y: " << y;
+        LOG(INFO) << "y: " << y + 1 << " / " << BSSRDF_TABLE_SIZE;
     }
 }
 

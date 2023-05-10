@@ -45,34 +45,43 @@ A typical config file looks like [this](./config.json):
 {
     "camera": {
         "position": [
-            -0.03,
-            0.02,
-            0.04
+            5.0,
+            1.75,
+            1.0
         ],
         "lookat": [
             0,
-            0,
+            0.005,
             0
         ],
         "fov": 60,
         "znear": 0.01,
-        "zfar": 50.0
+        "zfar": 100.0
     },
     "light": {
         "direction": [
             -1,
-            -1,
+            0,
             0
         ],
-        "intensity": 1
+        "intensity": 2.25
     },
     "model": {
         "path": "path to your model",
-        "scale": 0.01,
-        "rotationY": 0
+        "scale": 4,
+        "rotationY": 180
     },
-    "skybox": {
-        "path": "directory of your skybox textures"
+    "bssrdf": {
+        "sigma_t": [
+            0.8,
+            0.8,
+            0.8
+        ],
+        "albedo": [
+            0,
+            1,
+            0
+        ]
     }
 }
 ```
@@ -95,20 +104,7 @@ Due to multiple factors, I failed to see an agreement in common model/material f
 
 HDSSS **only** apply subsurface effect to those materials with volume factors > 0, such as `KHR_materials_volume.attenuationColor` and `attenuationDistance` in GLTF volume extensions.
 
-However, if you want to change subsurface parameters, you have to modify the source code, where in `hdsss/src/PBRMaterial.cpp`, you can look for the following code:
-
-```cpp
-std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
-    const loo::BaseMaterial& baseMaterial) {
-    const auto& pbrMetallic = baseMaterial.mrWorkFlow;
-    const vec3 marblesigmaA = vec3(0.0021, 0.0041, 0.0071),
-               marblesigmaS = vec3(2.19, 2.62, 2.00);
-               ...
-```
-
-where you can modify the `marblesigmaA` and `marblesigmaS` that really apply to your model, I use marble as an example here. 
-
-Apart from those two, another important parameter **eta** is distributed in two files(line number could be different with further development, but you can always search for `eta` in those two files):
+**eta** configuration is distributed in two files(line number could be different with further development, but you can always search for `eta` in those two files):
 
 - `hdsss/shaders/include/subsurface.glsl`, Line 11: `float eta = 1.3;`
 - `hdsss/src/BSSRDF.cpp`, Line 210: `double eta = 1.3;`

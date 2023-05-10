@@ -44,7 +44,7 @@ shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefaultSubsurface() {
                    defaultSigmaS = bssrdf.albedo * defaultSigmaT,
                    defaultSigmaA = defaultSigmaT - defaultSigmaS;
         defaultSubsurfaceMaterial = make_shared<PBRMetallicMaterial>(
-            vec3(1.0), 0.0, 0.5, defaultSigmaT, defaultSigmaA, 0.8);
+            vec3(1.0), 0.0, 1.0, defaultSigmaT, defaultSigmaA, 0.05);
     }
     return defaultSubsurfaceMaterial;
 }
