@@ -159,6 +159,9 @@ HDSSSApplication::HDSSSApplication(int width, int height,
     // final pass related
     { m_finalprocess.init(); }
     panicPossibleGLError();
+
+    PBRMetallicMaterial::bssrdf.albedo = config.bssrdf.albedo;
+    PBRMetallicMaterial::bssrdf.sigma_t = config.bssrdf.sigma_t;
 }
 void HDSSSApplication::initGBuffers() {
     m_gbufferfb.init();

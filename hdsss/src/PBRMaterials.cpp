@@ -9,10 +9,11 @@
 #include <assimp/material.h>
 #include <glm/fwd.hpp>
 #include <loo/Shader.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 using namespace std;
 using namespace glm;
 using namespace loo;
-namespace fs = std::filesystem;
 
 void PBRMetallicMaterial::bind(const ShaderProgram& sp) {
     PBRMetallicMaterial::uniformBuffer->updateData(&m_shadermaterial);
@@ -38,11 +39,12 @@ shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefault() {
 
 shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::getDefaultSubsurface() {
     if (!defaultSubsurfaceMaterial) {
-        const vec3 marblesigmaA = vec3(0.0021, 0.0041, 0.0071),
-                   marblesigmaS = vec3(2.19, 2.62, 2.00);
+        const auto& bssrdf = PBRMetallicMaterial::bssrdf;
+        const vec3 defaultSigmaT = bssrdf.sigma_t,
+                   defaultSigmaS = bssrdf.albedo * defaultSigmaT,
+                   defaultSigmaA = defaultSigmaT - defaultSigmaS;
         defaultSubsurfaceMaterial = make_shared<PBRMetallicMaterial>(
-            vec3(1.0), 0.0, 0.5, marblesigmaA + marblesigmaS, marblesigmaA,
-            0.8);
+            vec3(1.0), 0.0, 0.5, defaultSigmaT, defaultSigmaA, 0.8);
     }
     return defaultSubsurfaceMaterial;
 }
@@ -51,18 +53,21 @@ shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::defaultMaterial = nullptr;
 shared_ptr<PBRMetallicMaterial> PBRMetallicMaterial::defaultSubsurfaceMaterial =
     nullptr;
 unique_ptr<UniformBuffer> PBRMetallicMaterial::uniformBuffer = nullptr;
+PBRMetallicMaterial::BSSRDFConfig PBRMetallicMaterial::bssrdf = {vec3(4.0),
+                                                                 vec3(0, 1, 0)};
 
 std::shared_ptr<PBRMetallicMaterial> convertPBRMetallicMaterialFromBaseMaterial(
     const loo::BaseMaterial& baseMaterial) {
     const auto& pbrMetallic = baseMaterial.mrWorkFlow;
-    const vec3 marblesigmaA = vec3(0.0021, 0.0041, 0.0071),
-               marblesigmaS = vec3(2.19, 2.62, 2.00);
+    const auto& bssrdf = PBRMetallicMaterial::bssrdf;
+    const vec3 defaultSigmaT = bssrdf.sigma_t,
+               defaultSigmaS = bssrdf.albedo * defaultSigmaT,
+               defaultSigmaA = defaultSigmaT - defaultSigmaS;
     auto metallicMaterial = std::make_shared<PBRMetallicMaterial>(
         pbrMetallic.baseColor, pbrMetallic.metallic, pbrMetallic.transmission,
         // TODO: use measured data, currently using the marble data
-        length(pbrMetallic.sigma_t) == 0 ? pbrMetallic.sigma_t
-                                         : marblesigmaA + marblesigmaS,
-        length(pbrMetallic.sigma_a) == 0 ? pbrMetallic.sigma_a : marblesigmaA,
+        length(pbrMetallic.sigma_t) == 0 ? pbrMetallic.sigma_t : defaultSigmaT,
+        length(pbrMetallic.sigma_a) == 0 ? pbrMetallic.sigma_a : defaultSigmaA,
         // pbrMetallic.sigma_t, pbrMetallic.sigma_a,
         pbrMetallic.roughness);
     metallicMaterial->baseColorTex = pbrMetallic.baseColorTex;

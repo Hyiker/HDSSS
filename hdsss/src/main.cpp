@@ -72,6 +72,13 @@ HDSSSConfig parseJSONConfig(const char* filename, string& modelPath,
         auto& skybox = conf["skybox"];
         skyboxPath = skybox.value("path", skyboxPath);
     }
+    if (conf.contains("bssrdf")) {
+        auto& bssrdf = conf["bssrdf"];
+        config.bssrdf.sigma_t =
+            parseVec3(bssrdf, "sigma_t", config.bssrdf.sigma_t);
+        config.bssrdf.albedo =
+            parseVec3(bssrdf, "albedo", config.bssrdf.albedo);
+    }
     return config;
 }
 

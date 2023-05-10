@@ -35,6 +35,10 @@ class PBRMetallicMaterial : public loo::Material {
     static std::unique_ptr<loo::UniformBuffer> uniformBuffer;
 
    public:
+    static struct BSSRDFConfig {
+        glm::vec3 sigma_t;
+        glm::vec3 albedo;
+    } bssrdf;
     ShaderPBRMetallicMaterial& getShaderMaterial() { return m_shadermaterial; }
     const ShaderPBRMetallicMaterial& getShaderMaterial() const {
         return m_shadermaterial;

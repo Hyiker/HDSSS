@@ -42,6 +42,10 @@ struct HDSSSConfig {
     struct ModelConfig {
         glm::mat4 transform{glm::identity<glm::mat4>()};
     } model;
+    struct BSSRDFConfig {
+        glm::vec3 sigma_t{glm::vec3(4.0f)};
+        glm::vec3 albedo{glm::vec3(0, 1, 0)};
+    } bssrdf;
 };
 
 class HDSSSApplication : public loo::Application {

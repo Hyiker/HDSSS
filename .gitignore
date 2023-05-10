@@ -46,3 +46,5 @@ build/
 .vscode/
 camera.txt
 camera.bin
+*.json
+!config.json

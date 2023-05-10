@@ -26,5 +26,17 @@
         "path": "path to your model",
         "scale": 0.01,
         "rotationY": 0
+    },
+    "bssrdf": {
+        "sigma_t": [
+            4,
+            4,
+            4
+        ],
+        "albedo": [
+            0,
+            1,
+            0
+        ]
     }
 }
