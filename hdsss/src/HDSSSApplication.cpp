@@ -422,6 +422,9 @@ void HDSSSApplication::gui() {
                     ImGui::Checkbox("Use translucency texture",
                                     &m_finalpassoptions.translucency);
                     ImGui::Checkbox("Use SSS texture", &m_finalpassoptions.SSS);
+                    ImGui::SliderFloat("SSS strength",
+                                       &m_finalpassoptions.SSSStrength, 0.0,
+                                       4.0);
 
                     ImGui::PopItemWidth();
                 }

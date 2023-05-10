@@ -36,6 +36,7 @@ void FinalProcess::render(const loo::Texture2D& diffuseTexture,
     m_shader.setUniform("enableSpecular", options.specular);
     m_shader.setUniform("enableTranslucency", options.translucency);
     m_shader.setUniform("enableSSS", options.SSS);
+    m_shader.setUniform("SSSStrength", options.SSSStrength);
     m_shader.setTexture(0, diffuseTexture);
     m_shader.setTexture(1, specularTexture);
     m_shader.setTexture(2, translucencyTexture);

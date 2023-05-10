@@ -11,6 +11,7 @@ struct FinalPassOptions {
     bool specular{true};
     bool translucency{true};
     bool SSS{true};
+    float SSSStrength{1.0f};
     bool directOutput{false};
 };
 class FinalProcess {

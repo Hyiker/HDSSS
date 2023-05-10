@@ -15,6 +15,7 @@ uniform bool enableDiffuse;
 uniform bool enableSpecular;
 uniform bool enableTranslucency;
 uniform bool enableSSS;
+uniform float SSSStrength;
 
 vec3 gammaCorrection(in vec3 color) {
     const float gamma = 2.2;
@@ -50,7 +51,7 @@ void main() {
             color += translucency * transmission;
         }
         if (enableSSS) {
-            color += sss;
+            color += sss * SSSStrength;
         }
     } else {
         color = diffuse + specular;
