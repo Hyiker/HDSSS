@@ -20,6 +20,7 @@ class LOO_EXPORT Camera {
     glm::vec3 up;
     glm::vec3 right;
     glm::vec3 worldUp{0.f, 1.f, 0.f};
+    glm::vec3 lookat{0.f, 0.f, 0.f};
     float yaw{-90.0f};
     float pitch{0.0f};
     float speed{0.12f};
@@ -33,14 +34,22 @@ class LOO_EXPORT Camera {
 
     Camera(glm::vec3 position, glm::vec3 lookat, float fovRad, float zNear,
            float zFar)
-        : position(position), m_znear(zNear), m_zfar(zFar), m_fov(fovRad) {
+        : position(position),
+          lookat(lookat),
+          m_znear(zNear),
+          m_zfar(zFar),
+          m_fov(fovRad) {
         front = glm::normalize(lookat - position);
-        // compute pitch and yaw
-        pitch = glm::degrees(asin(front.y));
-        yaw = glm::degrees(atan2(front.z, front.x));
+        updatePitchAndYaw();
 
         updateCameraVectors();
     }
+    void updatePitchAndYaw() {
+
+        pitch = glm::degrees(asin(front.y));
+        yaw = glm::degrees(atan2(front.z, front.x));
+    }
+    void updateCameraVectors();
 
     glm::mat4 getViewMatrix() const;
 
@@ -60,7 +69,6 @@ class LOO_EXPORT Camera {
     void processMouseScroll(float xoffset, float yoffset);
 
    private:
-    void updateCameraVectors();
 };
 }  // namespace loo
 

@@ -73,17 +73,17 @@ float PBRCookTorranceBRDF(in SurfaceParamsPBRMetallicRoughness surface,
            (4.0 * max(0.001, dot(surface.normal, L)) *
             max(0.001, dot(surface.normal, surface.viewDirection)));
 }
-// float PBRDiffuseStrength(in SurfaceParamsPBRMetallicRoughness surface,
-//                          in ShaderLight light, in vec3 L) {
-//     vec3 h = safeNormalize(L + surface.viewDirection);
-//     float F90 = 0.5 + 2 * surface.roughness * dot(h, L);
-//     float f_diff =
-//         (1 + (F90 - 1) * pow(1 - dot(surface.normal, L), 5)) *
-//         (1 +
-//          (F90 - 1) * pow(1 - dot(surface.normal, surface.viewDirection), 5)) /
-//         3.1415926;
-//     return f_diff;
-// }
+float PBRDiffuseStrength(in SurfaceParamsPBRMetallicRoughness surface,
+                         in ShaderLight light, in vec3 L) {
+    vec3 h = safeNormalize(L + surface.viewDirection);
+    float F90 = 0.5 + 2 * surface.roughness * dot(h, L);
+    float f_diff =
+        (1 + (F90 - 1) * pow(1 - dot(surface.normal, L), 5)) *
+        (1 +
+         (F90 - 1) * pow(1 - dot(surface.normal, surface.viewDirection), 5)) /
+        3.1415926;
+    return f_diff;
+}
 
 vec3 SpecularStrength(in vec3 N, in float roughness, in vec3 L, in vec3 H) {
     float nh2 = sqr(clamp01(dot(N, H)));
@@ -108,7 +108,8 @@ void computePBRMetallicRoughnessLocalLighting(
     float NdotL = max(0.0, dot(N, L));
     vec3 kD = (1.0 - F) * (1.0 - surface.metallic);
     vec3 radiance = light.color.rgb * intensity;
-    diffuse = kD * baseColor * radiance * NdotL * PI_INV;
+    // diffuse = kD * baseColor * radiance * NdotL * PI_INV;
+    diffuse = PBRDiffuseStrength(surface, light, L) * radiance * NdotL * PI_INV;
     // specular = PBRCookTorranceBRDF(surface, light, L) * radiance;
     specular = SpecularStrength(N, surface.roughness, L, H) * radiance * 0.02;
 }

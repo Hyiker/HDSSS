@@ -79,6 +79,13 @@ HDSSSConfig parseJSONConfig(const char* filename, string& modelPath,
         config.bssrdf.albedo =
             parseVec3(bssrdf, "albedo", config.bssrdf.albedo);
     }
+    if (conf.contains("animation")) {
+        auto& animation = conf["animation"];
+        config.animation.cameraRotationY =
+            glm::radians(animation.value("cameraRotationY", 0.0f));
+        config.animation.modelRotationY =
+            glm::radians(animation.value("modelRotationY", 0.0f));
+    }
     return config;
 }
 
@@ -140,7 +147,7 @@ int main(int argc, char* argv[]) {
     config.model.transform =
         glm::scale(config.model.transform, glm::vec3(scaling));
 
-    HDSSSApplication app(1920, 1080, config,
+    HDSSSApplication app(960, 720, config,
                          skyboxDir.length() == 0 ? nullptr : skyboxDir.c_str());
     loadScene(app, modelPath.c_str(), config.model.transform);
     app.run();

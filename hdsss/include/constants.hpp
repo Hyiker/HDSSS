@@ -27,7 +27,7 @@ constexpr int SHADER_BINDING_PORT_MR_ROUGHNESS = 13;
 
 constexpr int SHADER_LIGHTS_MAX = 12;
 
-constexpr long long N_SURFELS_MAX = 20000000ll;
+constexpr long long N_SURFELS_MAX = 40000000ll;
 constexpr int DSS_N_PARTITION_LAYERS = 4;
 
 #endif /* HDSSS_INCLUDE_CONSTANTS_HPP */

@@ -10,7 +10,7 @@ struct SplatReceiver {
 };
 float eta = 1.5;
 float clampDistance = 1e-3;
-float sizeFactor = 1.0;
+float sizeFactor = 1.3;
 vec3 computeRadiantExitance(const in vec3 x_in, const in vec3 x_out,
                             const in float sampleArea,
                             const in vec3 sigma_s_prime,

@@ -166,6 +166,8 @@ HDSSSApplication::HDSSSApplication(int width, int height,
 
     PBRMetallicMaterial::bssrdf.albedo = config.bssrdf.albedo;
     PBRMetallicMaterial::bssrdf.sigma_t = config.bssrdf.sigma_t;
+    m_modelrotationy = config.animation.modelRotationY;
+    m_camerarotationy = config.animation.cameraRotationY;
 }
 void HDSSSApplication::initGBuffers() {
     m_gbufferfb.init();
@@ -275,6 +277,8 @@ void HDSSSApplication::saveScreenshot(fs::path filename) const {
 }
 
 void HDSSSApplication::gui() {
+    if (!m_guienable)
+        return;
     auto& io = ImGui::GetIO();
     float h = io.DisplaySize.y;
     ImGuiWindowFlags windowFlags =
@@ -289,6 +293,7 @@ void HDSSSApplication::gui() {
             // OpenGL option
             if (ImGui::CollapsingHeader("General info",
                                         ImGuiTreeNodeFlags_DefaultOpen)) {
+                ImGui::Text("Press [H] to toggle GUI");
                 ImGui::Text(
                     "Frame generation delay: %.3f ms/frame\n"
                     "FPS: %.1f",
@@ -469,7 +474,7 @@ void HDSSSApplication::gui() {
         vector<GLuint> textures;
         if (m_method == SubsurfaceMethod::HDSSS) {
             textures = {m_gbuffers.normal->getId(),
-                        m_hdsss.rdProfile.texture->getId(),
+                        m_transmitted_irradiance->getId(),
                         m_hdsss.getSSSSResult().getId(),
                         m_hdsss.getUpscaleResult().getId()};
         } else {
@@ -732,6 +737,14 @@ void HDSSSApplication::keyboard() {
     if (glfwGetKey(getWindow(), GLFW_KEY_R)) {
         m_maincam = Camera();
     }
+    static bool h_pressed = false;
+    if (glfwGetKey(getWindow(), GLFW_KEY_H) == GLFW_PRESS) {
+        h_pressed = true;
+    } else if (glfwGetKey(getWindow(), GLFW_KEY_H) == GLFW_RELEASE &&
+               h_pressed) {
+        m_guienable = !m_guienable;
+        h_pressed = false;
+    }
 }
 void HDSSSApplication::mouse() {
     glfwSetCursorPosCallback(getWindow(), mouseCallback);
@@ -742,6 +755,26 @@ void HDSSSApplication::loop() {
     // render
     glEnable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
+
+    if (m_modelrotationy != 0) {
+        for (auto& mesh : m_scene.getMeshes()) {
+            mesh->objectMatrix = glm::rotate(
+                mesh->objectMatrix,
+                glm::radians(m_modelrotationy) * getFrameDeltaTime() * 1000.0f,
+                vec3(0, 1, 0));
+        }
+    }
+    if (m_camerarotationy != 0) {
+        // rotate along the Y axis in lookat position
+        m_maincam.position = glm::rotate(
+            m_maincam.position,
+            glm::radians(m_camerarotationy) * getFrameDeltaTime() * 1000.0f,
+            vec3(0, 1, 0));
+        m_maincam.front = glm::normalize(m_maincam.lookat - m_maincam.position);
+        m_maincam.updatePitchAndYaw();
+        m_maincam.updateCameraVectors();
+    }
+
     {
         gbufferPass();
 

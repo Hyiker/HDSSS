@@ -27,6 +27,7 @@ class LOO_EXPORT Scene {
     void prepare() const;
     glm::mat4 getModelMatrix() const;
     auto& getMeshes() const { return m_meshes; }
+    auto getMeshes() { return m_meshes; }
 
     // +++++ debug use +++++
     size_t countMesh() const;

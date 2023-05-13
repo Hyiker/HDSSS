@@ -46,6 +46,10 @@ struct HDSSSConfig {
         glm::vec3 sigma_t{glm::vec3(4.0f)};
         glm::vec3 albedo{glm::vec3(0, 1, 0)};
     } bssrdf;
+    struct Animation {
+        float cameraRotationY{0.0f};
+        float modelRotationY{0.0f};
+    } animation;
 };
 
 class HDSSSApplication : public loo::Application {
@@ -142,6 +146,11 @@ class HDSSSApplication : public loo::Application {
     bool m_enableparallax{true};
     bool m_lodvisualize{false};
     bool m_screenshotflag{false};
+
+    float m_modelrotationy{0.0f};
+    float m_camerarotationy{0.0f};
+
+    bool m_guienable{true};
 
     FinalPassOptions m_finalpassoptions;
     // float m_displaceintensity{};

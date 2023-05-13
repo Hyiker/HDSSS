@@ -38,5 +38,9 @@
             1,
             0
         ]
+    },
+    "animation": {
+        "cameraRotationY": 0.1,
+        "modelRotationY": 0.1
     }
 }

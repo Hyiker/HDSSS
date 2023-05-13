@@ -32,8 +32,7 @@ void main() {
     const float distanceToSurfel = length(xo - xi);
 
     float surfelArea = geometrySurfel.radius * geometrySurfel.radius * PI;
-    if (pixelPosition.a > 0.0 && distanceToSurfel < geometryMaxDistance &&
-        distanceToSurfel < geometryOuterRadius &&
+    if (pixelPosition.a > 0.0 && distanceToSurfel < geometryOuterRadius &&
         distanceToSurfel > geometryInnerRadius) {
         vec3 adjustedXi = xi;
         vec3 ni = normalize(geometrySurfel.normal);
@@ -44,12 +43,12 @@ void main() {
         // fragColor = computeEffect(geometrySurfel, adjustedXi,
         //                           SplatReceiver(xo, pixelNormal)) *
         //             strength;
+
         vec3 n = normalize(pixelNormal), v = normalize(cameraPos - xo);
-        fragColor =
-            computeFragmentEffect(RdProfile, RdMaxArea, RdMaxDistance,
-                                  pixelPosition.xyz, n, surfelArea, adjustedXi,
-                                  cameraPos, geometrySurfel.light) *
-            strength;
+        fragColor = computeFragmentEffect(RdProfile, RdMaxArea, RdMaxDistance,
+                                          pixelPosition.xyz, n, surfelArea,
+                                          adjustedXi, cameraPos, vec3(1)) *
+                    strength;
     } else {
         fragColor = vec3(0.0);
     }
